@@ -45,7 +45,7 @@
   :link '(url-link :tag "Github" "https://github.com/tu10ng/ahk-mode")
   :link '(emacs-commentary-link :tag "Commentary" "ahk"))
 
-(defcustom ahk-path nil
+(defcustom ahk-path ""
   "Custom path for AutoHotkey executable and related files."
   :type 'string)
 
