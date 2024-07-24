@@ -107,9 +107,6 @@
 (require 'thingatpt)
 (require 'rx)
 
-(defvar ac-modes)
-(defvar company-tooltip-align-annotations)
-
 ;; add to auto-complete sources if ac is loaded
 (eval-after-load "auto-complete"
   '(progn
@@ -117,55 +114,115 @@
      (add-to-list 'ac-modes 'ahk-mode)))
 
 ;;; Customization
-
-(defconst ahk-mode-version "1.5.6"
-  "Version of `ahk-mode'")
-
-(defgroup ahk-mode nil
+(defgroup ahk nil
   "Major mode for editing AutoHotkey script."
   :group 'languages
-  :prefix "ahk-"
-  :link '(url-link :tag "Github" "https://github.com/ralesi/ahk-mode")
-  :link '(emacs-commentary-link :tag "Commentary" "ahk-mode"))
+  :link '(url-link :tag "Github" "https://github.com/tu10ng/ahk-mode")
+  :link '(emacs-commentary-link :tag "Commentary" "ahk"))
 
-(defcustom ahk-indentation (or tab-width 2)
-  "The indentation level."
-  :type 'integer
-  :group 'ahk-mode)
+(defcustom ahk-path nil
+  "Custom path for AutoHotkey executable and related files."
+  :type 'string)
 
 (defvar ahk-debug nil
   "Allows additional output when set to non-nil.")
 
-(defvar ahk-path nil
-  "Custom path for AutoHotkey executable and related files.")
+
+;;; Bindings
 
-;;;###autoload
-(add-to-list 'auto-mode-alist '("\\.ahk\\'"  . ahk-mode))
-
-;;; keymap
 (defvar ahk-mode-map
   (let ((map (make-sparse-keymap)))
     ;; key bindings
     (define-key map (kbd "C-c C-?") #'ahk-lookup-web)
     (define-key map (kbd "C-c C-r") #'ahk-lookup-chm)
-    (define-key map (kbd "C-c M-i") #'ahk-indent-message)
-    (define-key map (kbd "C-c C-c") #'ahk-comment-dwim)
-    (define-key map (kbd "C-c C-b") #'ahk-comment-block-dwim)
     (define-key map (kbd "C-c C-k") #'ahk-run-script)
+    (easy-menu-define ahk-menu map "AHK Mode menu"
+      '("AHK"
+        ["Lookup webdocs on command" ahk-lookup-web]
+        ["Lookup local documentation on command" ahk-lookup-chm]
+        ["Execute script" ahk-run-script]
+        ))
     map)
-  "Keymap for Autohotkey major mode.")
+  "Keymap for `ahk-mode'.")
 
-;;; menu
-(easy-menu-define ahk-menu ahk-mode-map
-  "AHK Mode Commands"
-  '("AHK"
-    ["Lookup webdocs on command" ahk-lookup-web]
-    ["Lookup local documentation on command" ahk-lookup-chm]
-    ["Execute script" ahk-run-script]
-    "---"
-    ["Version" ahk-version]))
+
+;;; Font-lock and syntax
 
-;;; syntax table
+(defvar ahk-commands
+  '("Abort" "AboveNormal" "Add" "All" "Alnum" "Alpha" "AltSubmit" "AlwaysOnTop" "And" "Asc" "AutoSize" "AutoTrim" "Background" "BackgroundTrans" "BelowNormal" "Between" "BitAnd" "BitNot" "BitOr" "BitShiftLeft" "BitShiftRight" "BitXOr" "BlockInput" "Border" "Bottom" "Break" "Button" "Buttons" "ByRef" "Cancel" "Capacity" "Caption" "Catch" "Ceil" "Center" "Check" "Check3" "Checkbox" "Checked" "CheckedGray" "Checks" "Choose" "ChooseString" "Chr" "Click" "ClipWait" "Close" "Color" "ComboBox" "Contains" "Continue" "Control" "ControlClick" "ControlFocus" "ControlGet" "ControlGetFocus" "ControlGetPos" "ControlGetText" "ControlList" "ControlMove" "ControlSend" "ControlSendRaw" "ControlSetText" "CoordMode" "Count" "Critical" "DDL" "Date" "DateTime" "Days" "Default" "Delete" "DeleteAll" "Delimiter" "Deref" "Destroy" "DetectHiddenText" "DetectHiddenWindows" "Digit" "Disable" "Disabled" "Displays" "Drive" "DriveGet" "DriveSpaceFree" "DropDownList" "Edit" "Eject" "Else" "Enable" "Enabled" "EnvAdd" "EnvDiv" "EnvGet" "EnvMult" "EnvSet" "EnvSub" "EnvUpdate" "Error" "ExStyle" "Exist" "Exit" "ExitApp" "Exp" "Expand" "FileAppend" "FileCopy" "FileCopyDir" "FileCreateDir" "FileCreateShortcut" "FileDelete" "FileEncoding" "FileGetAttrib" "FileGetShortcut" "FileGetSize" "FileGetTime" "FileGetVersion" "FileInstall" "FileMove" "FileMoveDir" "FileOpen" "FileRead" "FileReadLine" "FileRecycle" "FileRecycleEmpty" "FileRemoveDir" "FileSelectFile" "FileSelectFolder" "FileSetAttrib" "FileSetTime" "FileSystem" "Finally" "First" "Flash" "Float" "FloatFast" "Floor" "Focus" "Font" "For" "Format" "FormatTime" "GetKeyState" "Gosub" "Goto" "Grid" "Group" "GroupActivate" "GroupAdd" "GroupBox" "GroupClose" "GroupDeactivate" "Gui" "GuiClose" "GuiContextMenu" "GuiControl" "GuiControlGet" "GuiDropFiles" "GuiEscape" "GuiSize" "HKCC" "HKCR" "HKCU" "HKEY_CLASSES_ROOT" "HKEY_CURRENT_CONFIG" "HKEY_CURRENT_USER" "HKEY_LOCAL_MACHINE" "HKEY_USERS" "HKLM" "HKU" "HScroll" "Hdr" "Hidden" "Hide" "High" "Hotkey" "Hours" "ID" "IDLast" "Icon" "IconSmall" "If" "IfEqual" "IfExist" "IfGreater" "IfGreaterOrEqual" "IfInString" "IfLess" "IfLessOrEqual" "IfMsgBox" "IfNotEqual" "IfWinActive" "IfWinExist" "IfWinNotActive" "IfWinNotExist" "Ignore" "ImageList" "ImageSearch" "In" "IniDelete" "IniRead" "IniWrite" "Input" "InputBox" "Integer" "IntegerFast" "Interrupt" "Is" "Join" "KeyHistory" "KeyWait" "LTrim" "Label" "LastFound" "LastFoundExist" "Left" "Limit" "Lines" "List" "ListBox" "ListHotkeys" "ListLines" "ListVars" "ListView" "Ln" "Lock" "Log" "Logoff" "Loop" "Low" "Lower" "Lowercase" "MainWindow" "Margin" "MaxSize" "Maximize" "MaximizeBox" "Menu" "MinMax" "MinSize" "Minimize" "MinimizeBox" "Minutes" "Mod" "MonthCal" "Mouse" "MouseClick" "MouseClickDrag" "MouseGetPos" "MouseMove" "Move" "MsgBox" "Multi" "NA" "No" "NoActivate" "NoDefault" "NoHide" "NoIcon" "NoMainWindow" "NoSort" "NoSortHdr" "NoStandard" "NoTab" "NoTimers" "Normal" "Not" "Number" "Off" "Ok" "On" "OnExit" "Or" "OutputDebug" "OwnDialogs" "Owner" "Parse" "Password" "Pause" "Pic" "Picture" "Pixel" "PixelGetColor" "PixelSearch" "Pos" "PostMessage" "Pow" "Priority" "Process" "ProcessName" "Progress" "REG_BINARY" "REG_DWORD" "REG_EXPAND_SZ" "REG_MULTI_SZ" "REG_SZ" "RGB" "RTrim" "Radio" "Random" "Range" "Read" "ReadOnly" "Realtime" "Redraw" "RegDelete" "RegRead" "RegWrite" "Region" "Relative" "Reload" "Rename" "Report" "Resize" "Restore" "Retry" "Return" "Right" "Round" "Run" "RunAs" "RunWait" "Screen" "Seconds" "Section" "See" "Send" "SendInput" "SendLevel" "SendMessage" "SendMode" "SendPlay" "SendRaw" "Serial" "SetBatchLines" "SetCapslockState" "SetControlDelay" "SetDefaultMouseSpeed" "SetEnv" "SetFormat" "SetKeyDelay" "SetLabel" "SetMouseDelay" "SetNumlockState" "SetRegView" "SetScrollLockState" "SetStoreCapslockMode" "SetTimer" "SetTitleMatchMode" "SetWinDelay" "SetWorkingDir" "ShiftAltTab" "Show" "Shutdown" "Sin" "Single" "Sleep" "Slider" "Sort" "SortDesc" "SoundBeep" "SoundGet" "SoundGetWaveVolume" "SoundPlay" "SoundSet" "SoundSetWaveVolume" "SplashImage" "SplashTextOff" "SplashTextOn" "SplitPath" "Sqrt" "Standard" "Status" "StatusBar" "StatusBarGetText" "StatusBarWait" "StatusCD" "StringCaseSense" "StringGetPos" "StringLeft" "StringLen" "StringLower" "StringMid" "StringReplace" "StringRight" "StringSplit" "StringTrimLeft" "StringTrimRight" "StringUpper" "Style" "Submit" "Suspend" "SysGet" "SysMenu" "Tab" "Tab2" "TabStop" "Tan" "Text" "Theme" "Thread" "Throw" "Tile" "Time" "Tip" "ToggleCheck" "ToggleEnable" "ToolTip" "ToolWindow" "Top" "Topmost" "TransColor" "Transform" "Transparent" "Tray" "TrayTip" "TreeView" "Trim" "Try" "TryAgain" "Type" "UnCheck" "Unicode" "Unlock" "Until" "UpDown" "Upper" "Uppercase" "UrlDownloadToFile" "UseErrorLevel" "VScroll" "Var" "Vis" "VisFirst" "Visible" "Wait" "WaitClose" "WantCtrlA" "WantF2" "WantReturn" "While" "WinActivate" "WinActivateBottom" "WinClose" "WinGet" "WinGetActiveStats" "WinGetActiveTitle" "WinGetClass" "WinGetPos" "WinGetText" "WinGetTitle" "WinHide" "WinKill" "WinMaximize" "WinMenuSelectItem" "WinMinimize" "WinMinimizeAll" "WinMinimizeAllUndo" "WinMove" "WinRestore" "WinSet" "WinSetTitle" "WinShow" "WinWait" "WinWaitActive" "WinWaitClose" "WinWaitNotActive" "Wrap" "Xdigit" "Yes" "ahk_class" "ahk_group" "ahk_id" "ahk_pid" "bold" "global" "italic" "local" "norm" "static" "strike" "underline" "xm" "xp" "xs" "ym" "yp" "ys")
+  "AHK keywords.")
+
+(defvar ahk-directives
+  '("#ClipboardTimeout" "#CommentFlag" "#ErrorStdOut" "#EscapeChar" "#HotkeyInterval" "#HotkeyModifierTimeout" "#Hotstring" "#If" "#IfTimeout" "#IfWinActive" "#IfWinExist" "#Include" "#InputLevel" "#InstallKeybdHook" "#InstallMouseHook" "#KeyHistory" "#LTrim" "#MaxHotkeysPerInterval" "#MaxMem" "#MaxThreads" "#MaxThreadsBuffer" "#MaxThreadsPerHotkey" "#MenuMaskKey" "#NoEnv" "#NoTrayIcon" "#Persistent" "#SingleInstance" "#UseHook" "#Warn" "#WinActivateForce")
+  "AHK directives")
+
+(defvar ahk-functions
+  '("ACos" "ASin" "ATan" "Abs" "Asc" "Ceil" "Chr" "ComObjActive" "ComObjArray" "ComObjConnect" "ComObjCreate" "ComObjEnwrap" "ComObjError" "ComObjFlags" "ComObjGet" "ComObjMissing" "ComObjParameter" "ComObjQuery" "ComObjType" "ComObjUnwrap" "ComObjValue" "Cos" "DllCall" "Exp" "FileExist" "Floor" "Func" "Functions" "GetKeyName" "GetKeySC" "GetKeyState" "GetKeyVK" "IL_Add" "IL_Create" "IL_Destroy" "InStr" "IsByRef" "IsFunc" "IsLabel" "IsObject" "LV_Add" "LV_Delete" "LV_DeleteCol" "LV_GetCount" "LV_GetNext" "LV_GetText" "LV_Insert" "LV_InsertCol" "LV_Modify" "LV_ModifyCol" "LV_SetImageList" "Ln" "Log" "Mod" "NumGet" "NumPut" "OnMessage" "RegExMatch" "RegExReplace" "RegisterCallback" "Round" "SB_SetIcon" "SB_SetParts" "SB_SetText" "Sin" "Sqrt" "StrGet" "StrLen" "StrPut" "SubStr" "TV_Add" "TV_Delete" "TV_Get" "TV_GetChild" "TV_GetCount" "TV_GetNext" "TV_GetParent" "TV_GetPrev" "TV_GetSelection" "TV_GetText" "TV_Modify" "Tan" "VarSetCapacity" "WinActive" "WinExist")
+  "AHK functions.")
+
+(defvar ahk-variables
+  '("A_AhkPath" "A_AhkVersion" "A_AppData" "A_AppDataCommon" "A_AutoTrim" "A_BatchLines" "A_CaretX" "A_CaretY" "A_ComputerName" "A_ControlDelay" "A_Cursor" "A_DD" "A_DDD" "A_DDDD" "A_DefaultMouseSpeed" "A_Desktop" "A_DesktopCommon" "A_DetectHiddenText" "A_DetectHiddenWindows" "A_EndChar" "A_EventInfo" "A_ExitReason" "A_FileEncoding" "A_FormatFloat" "A_FormatInteger" "A_Gui" "A_GuiControl" "A_GuiControlEvent" "A_GuiEvent" "A_GuiHeight" "A_GuiWidth" "A_GuiX" "A_GuiY" "A_Hour" "A_IPAddress1" "A_IPAddress2" "A_IPAddress3" "A_IPAddress4" "A_ISAdmin" "A_IconFile" "A_IconHidden" "A_IconNumber" "A_IconTip" "A_Index" "A_Is64bitOS" "A_IsAdmin" "A_IsCompiled" "A_IsCritical" "A_IsPaused" "A_IsSuspended" "A_IsUnicode" "A_KeyDelay" "A_Language" "A_LastError" "A_LineFile" "A_LineNumber" "A_LoopField" "A_LoopFileAttrib" "A_LoopFileDir" "A_LoopFileExt" "A_LoopFileFullPath" "A_LoopFileLongPath" "A_LoopFileName" "A_LoopFileName," "A_LoopFileShortName" "A_LoopFileShortPath" "A_LoopFileSize" "A_LoopFileSizeKB" "A_LoopFileSizeMB" "A_LoopFileTimeAccessed" "A_LoopFileTimeCreated" "A_LoopFileTimeModified" "A_LoopReadLine" "A_LoopRegKey" "A_LoopRegName" "A_LoopRegName," "A_LoopRegSubkey" "A_LoopRegTimeModified" "A_LoopRegType" "A_MDAY" "A_MM" "A_MMM" "A_MMMM" "A_MSec" "A_Min" "A_Mon" "A_MouseDelay" "A_MyDocuments" "A_Now" "A_NowUTC" "A_NumBatchLines" "A_OSType" "A_OSVersion" "A_PriorHotkey" "A_PriorKey" "A_ProgramFiles" "A_Programs" "A_ProgramsCommon" "A_PtrSize" "A_RegView" "A_ScreenDPI" "A_ScreenHeight" "A_ScreenWidth" "A_ScriptDir" "A_ScriptFullPath" "A_ScriptHwnd" "A_ScriptName" "A_Sec" "A_Space" "A_StartMenu" "A_StartMenuCommon" "A_Startup" "A_StartupCommon" "A_StringCaseSense" "A_Tab" "A_Temp" "A_ThisFunc" "A_ThisHotkey" "A_ThisLabel" "A_ThisMenu" "A_ThisMenuItem" "A_ThisMenuItemPos" "A_TickCount" "A_TimeIdle" "A_TimeIdlePhysical" "A_TimeSincePriorHotkey" "A_TimeSinceThisHotkey" "A_TitleMatchMode" "A_TitleMatchModeSpeed" "A_UserName" "A_WDay" "A_WinDelay" "A_WinDir" "A_WorkingDir" "A_YDay" "A_YEAR" "A_YWeek" "A_YYYY" "Clipboard" "ClipboardAll" "ComSpec" "ErrorLevel" "False" "ProgramFiles" "True" "Variable")
+  "AHK variables.")
+
+(defvar ahk-keys
+  '("Alt" "AltDown" "AltTab" "AltTabAndMenu" "AltTabMenu" "AltTabMenuDismiss" "AltUp" "AppsKey" "BS" "BackSpace" "Browser_Back" "Browser_Favorites" "Browser_Forward" "Browser_Home" "Browser_Refresh" "Browser_Search" "Browser_Stop" "CapsLock" "Control" "Ctrl" "CtrlBreak" "CtrlDown" "CtrlUp" "Del" "Delete" "Down" "End" "Enter" "Esc" "Escape" "F1" "F10" "F11" "F12" "F13" "F14" "F15" "F16" "F17" "F18" "F19" "F2" "F20" "F21" "F22" "F23" "F24" "F3" "F4" "F5" "F6" "F7" "F8" "F9" "Home" "Ins" "Insert" "Joy1" "Joy10" "Joy11" "Joy12" "Joy13" "Joy14" "Joy15" "Joy16" "Joy17" "Joy18" "Joy19" "Joy2" "Joy20" "Joy21" "Joy22" "Joy23" "Joy24" "Joy25" "Joy26" "Joy27" "Joy28" "Joy29" "Joy3" "Joy30" "Joy31" "Joy32" "Joy4" "Joy5" "Joy6" "Joy7" "Joy8" "Joy9" "JoyAxes" "JoyButtons" "JoyInfo" "JoyName" "JoyPOV" "JoyR" "JoyU" "JoyV" "JoyX" "JoyY" "JoyZ" "LAlt" "LButton" "LControl" "LCtrl" "LShift" "LWin" "LWinDown" "LWinUp" "Launch_App1" "Launch_App2" "Launch_Mail" "Launch_Media" "Left" "MButton" "Media_Next" "Media_Play_Pause" "Media_Prev" "Media_Stop" "NumLock" "Numpad0" "Numpad1" "Numpad2" "Numpad3" "Numpad4" "Numpad5" "Numpad6" "Numpad7" "Numpad8" "Numpad9" "NumpadAdd" "NumpadClear" "NumpadDel" "NumpadDiv" "NumpadDot" "NumpadDown" "NumpadEnd" "NumpadEnter" "NumpadHome" "NumpadIns" "NumpadLeft" "NumpadMult" "NumpadPgdn" "NumpadPgup" "NumpadRight" "NumpadSub" "NumpadUp" "PGDN" "PGUP" "Pause" "PrintScreen" "RAlt" "RButton" "RControl" "RCtrl" "RShift" "RWin" "RWinDown" "RWinUp" "Right" "ScrollLock" "Shift" "ShiftDown" "ShiftUp" "Space" "Tab" "Up" "Volume_Down" "Volume_Mute" "Volume_Up" "WheelDown" "WheelLeft" "WheelRight" "WheelUp" "XButton1" "XButton2")
+  "AHK keywords for keys.")
+
+(defvar ahk-operator-words
+  '("AND" "NOT" "OR")
+  "AHK operator words.")
+
+(defvar ahk-operators
+  '("\\!" "!=" "&" "&&" "&=" "*" "**" "*=" "+" "++" "+=" "-" "--" "-=" "." "." ".=" "/" "//" "//=" "/=" ":=" "<" "<<" "<<=" "<=" "<>" "=" "==" ">" ">=" ">>" ">>=" "?:" "^" "^=" "|" "|=" "||" "~" "~=" ",")
+  "AHK operators.")
+
+(defvar ahk-commands-regexp (regexp-opt ahk-commands 'words))
+(defvar ahk-functions-regexp (regexp-opt ahk-functions 'words))
+(defvar ahk-directives-regexp (regexp-opt ahk-directives 'words))
+(defvar ahk-variables-regexp (regexp-opt ahk-variables 'words))
+(defvar ahk-keys-regexp (regexp-opt ahk-keys 'words))
+(defvar ahk-operator-words-regexp (regexp-opt ahk-operator-words 'words))
+(defvar ahk-operators-regexp (regexp-opt ahk-operators))
+
+(defvar ahk-double-quote-string-re "[\"]\\(\\\\.\\|[^\"\n]\\)*[\"]"
+  "Regexp used to match a double-quoted string literal")
+
+(defvar ahk-single-quote-string-re "[']\\(\\\\.\\|[^'\n]\\)*[']"
+  "Regexp used to match a single-quoted string literal")
+
+(defvar ahk-font-lock-keywords
+  `(("\\s-*;.*$" . font-lock-comment-face)
+    ("^/\\*\\(.*\r?\n\\)*\\(\\*/\\)?" . font-lock-comment-face) ; block comments
+    
+    ;; lLTrim0 usage
+    ;; ("(LTrim0\\(.*\n\\)+" . font-lock-string-face)
+    (,ahk-double-quote-string-re . font-lock-string-face)
+    (,ahk-single-quote-string-re . font-lock-string-face)
+    
+    ;; bindings
+    ("^\\([^\t\n:=]+\\)::" . (1 font-lock-constant-face))
+    
+    ;; labels
+    ("^\\([^\t\n :=]+\\):[^=]" . (1 font-lock-doc-face))
+    
+    ;; return
+    ("\\<\\([Rr]eturn\\)\\>" . font-lock-warning-face)
+    
+    ;; functions
+    ("^\\([^\t\n (]+\\)\\((.*)\\)" . (1 font-lock-function-name-face))
+    
+    ;; variables
+    ("%[^% ]+%" . font-lock-variable-name-face)
+    (,ahk-commands-regexp . font-lock-keyword-face)
+    (,ahk-functions-regexp . font-lock-function-name-face)
+    (,ahk-directives-regexp . font-lock-preprocessor-face)
+    (,ahk-variables-regexp . font-lock-variable-name-face)
+    (,ahk-keys-regexp . font-lock-constant-face)
+    (,ahk-operator-words-regexp . font-lock-builtin-face)
+    (,ahk-operators-regexp . font-lock-builtin-face)
+    ;; note: order matters
+    ))
+
 (defvar ahk-mode-syntax-table
   (let ((syntax-table (make-syntax-table)))
     ;; these are also allowed in variable names
@@ -185,72 +242,42 @@
     syntax-table)
   "Syntax table for `ahk-mode'.")
 
-;;; imenu support
+(defun ahk-font-lock-extend-region ()
+  "Extend the search region to include an entire block of text."
+  ;; Avoid compiler warnings about these global variables from font-lock.el.
+  ;; See the documentation for variable `font-lock-extend-region-functions'.
+  
+  ;; (set (make-local-variable 'font-lock-multiline) t)
+  ;; (add-hook 'font-lock-extend-region-functions
+  ;;           'ahk-font-lock-extend-region)
 
-(defconst ahk-imenu-generic-expression
-  '(("Functions"   "^[ \t]*\\([^ ]+\\)(.*)[\n]{" 1)
-    ("Labels"      "^[ \t]*\\([^:;]+\\):\n" 1)
-    ("Keybindings" "^[ \t]*\\([^;: \t\r\n\v\f].*?\\)::" 1)
-    ("Hotstrings" "^[ \t]*\\(:.*?:.*?::\\)" 1)
-    ("Comments"    "^;imenu \\(.+\\)" 1))
-  "imenu index for `ahk-mode'")
+  ;; clear memory
+  ;; (setq ahk-commands-regexp nil)
+  ;; (setq ahk-functions-regexp nil)
+  ;; (setq ahk-variables-regexp nil)
+  ;; (setq ahk-keys-regexp nil)
 
-(defun ahk-run-script ()
-  "Run the ahk-script in the current buffer."
-  (interactive)
-  (let ((file (shell-quote-argument
-               (replace-regexp-in-string " " "\ "
-                                         (replace-regexp-in-string "\/" "\\\\" (buffer-file-name) t t)))))
-    (message "Executing script %s" file)
-    (w32-shell-execute "open" file)))
+  (eval-when-compile (defvar font-lock-beg) (defvar font-lock-end))
+  (save-excursion
+    (goto-char font-lock-beg)
+    (let ((found (or (re-search-backward "(LTrim0" nil t) (point-min))))
+      (goto-char font-lock-end)
+      (when (re-search-forward "\n)" nil t)
+        (beginning-of-line)
+        (setq font-lock-end (point)))
+      (setq font-lock-beg found))))
 
-(defun ahk-command-at-point ()
-  "Determine command at point, and prompt if nothing found."
-  (let ((command (or (if (region-active-p)
-                         (buffer-substring-no-properties
-                          (region-beginning)
-                          (region-end))
-                       (thing-at-point 'symbol))
-                     (read-string "Command: "))))
-    command))
+
+;;; indentation
 
-(defun ahk-lookup-web ()
-  "Look up current word in AutoHotkey's reference doc.
-Launches default browser and opens the doc's url."
-  (interactive)
-  (let* ((acap (ahk-command-at-point))
-         (url (concat "http://ahkscript.org/docs/commands/" acap ".htm")))
-    (browse-url url)))
+(defcustom ahk-indentation-offset (or tab-width 2)
+  "The indentation level."
+  :type 'integer
+  :group 'ahk)
 
-(defun ahk-lookup-chm ()
-  "Look up current word in AutoHotkey's reference doc.
-Finds the command in the internal AutoHotkey documentation."
-  (interactive)
-  (let* ((acap (ahk-command-at-point))
-         (chm-path
-          (or (and (file-exists-p "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
-                   "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
-              (and (file-exists-p "c:/Program Files/AutoHotkey/AutoHotkey.chm")
-                   "c:/Program Files/AutoHotkey/AutoHotkey.chm")
-              (and (file-exists-p (concat ahk-path "/AutoHotkey.chm"))
-                   (concat ahk-path "/AutoHotkey.chm")))))
-    (if chm-path
-        (when acap (message "Opening help item for \"%s\"" acap)
-              (w32-shell-execute 1 "hh.exe"
-                                 (format
-                                  "ms-its:%s::/docs/commands/%s.htm"
-                                  chm-path acap)))
-      (message "Help file could not be found, set ahk-path variable."))))
-
-(defun ahk-version ()
-  "Show the `ahk-mode' version in the echo area."
-  (interactive)
-  (message "ahk-mode version %s" ahk-mode-version))
-
-;;;; indentation
 (defun ahk-calc-indentation (str &optional offset)
   "Calculate the current indentation level of argument"
-  (let ((i (* (or offset 0) ahk-indentation)))
+  (let ((i (* (or offset 0) ahk-indentation-offset)))
     (while (string-match "\t" str)
       (setq i (+ i tab-width)
             str (replace-match "" nil t str)))
@@ -282,11 +309,6 @@ Finds the command in the internal AutoHotkey documentation."
     (while (and (looking-at "^[ \t]*$") (not (bobp)))
       (forward-line -1))
     (current-indentation)))
-
-(defun ahk-indent-message ()
-  "Show message for current indentation level"
-  (interactive)
-  (message (format "%s" (current-indentation))))
 
 (defun ahk-indent-line ()
   "Indent the current line."
@@ -343,17 +365,17 @@ Finds the command in the internal AutoHotkey documentation."
        (blank
         (setq indent 0))
        (closing-brace
-        (setq indent (- indent ahk-indentation)))
+        (setq indent (- indent ahk-indentation-offset)))
        ;; if beginning with a comment, take its indentation
        ((looking-at "^\\([ \t]*\\);")
         nil)
        ;; keybindings
        ((and (looking-at "^[ \t]*[^:\n ]+:$")
              (not label))
-        (setq indent (+ indent ahk-indentation)))
+        (setq indent (+ indent ahk-indentation-offset)))
        ;; return
        ((looking-at "^\\([ \t]*\\)[rR]eturn")
-        (setq indent (- indent ahk-indentation)))
+        (setq indent (- indent ahk-indentation-offset)))
        ;; label
        (label
         (setq indent 0))
@@ -362,17 +384,17 @@ Finds the command in the internal AutoHotkey documentation."
          (not block-skip)
          (looking-at "^[^: \n]+:$")
          (looking-at "^[^:\n]+:\\([^:\n]*\\)?[ 	]*$"))
-        (setq indent (+ indent ahk-indentation)))
+        (setq indent (+ indent ahk-indentation-offset)))
        ;; opening brace
        ((looking-at "^\\([ \t]*\\)[{(]$")
         (and
          (setq empty-brace t)
-         (setq indent (+ indent ahk-indentation))))
+         (setq indent (+ indent ahk-indentation-offset))))
        ;; brace at end of line
        ((or
          (looking-at "^\\([ \t]*\\).*[{][^}]*$")
          (looking-at "^\\([ \t]*\\).*[(][^)]*$"))
-        (setq indent (+ indent ahk-indentation)))
+        (setq indent (+ indent ahk-indentation-offset)))
        ;; If/Else with body on next line, but not opening { or (
        ((and (not opening-brace)
              (not block-skip)
@@ -383,15 +405,15 @@ Finds the command in the internal AutoHotkey documentation."
              )
         (and
          (setq prev-single t)
-         (setq indent (+ indent ahk-indentation))))
+         (setq indent (+ indent ahk-indentation-offset))))
        ((looking-at "^[ \t]*,[^\n]+[}]$")  ; last line of a multi-line list
-         (setq indent (- indent ahk-indentation)))
+        (setq indent (- indent ahk-indentation-offset)))
 
        ;; (return
-       ;;  (setq indent (- indent ahk-indentation)))
+       ;;  (setq indent (- indent ahk-indentation-offset)))
        ;; subtract indentation if closing bracket only
        ;; ((looking-at "^[ \t]*[})]")
-       ;;  (setq indent (- indent ahk-indentation)))
+       ;;  (setq indent (- indent ahk-indentation-offset)))
        ;; zero indentation when at label or keybinding
        ((or (looking-at "^[ \t]*[^,: \t\n]*:$")
             (looking-at "^;;;"))
@@ -405,7 +427,7 @@ Finds the command in the internal AutoHotkey documentation."
               (looking-at "^[ \t]*\\([Ll]oop\\)[^{]+\n")
               (looking-at "^\\([ \t]*\\)\\([iI]f\\|[eE]lse\\)[^{]+\n")))
         ;; adjust when stacking multiple single line commands
-        (setq indent (- indent (if prev-single (- (* 2 ahk-indentation)) 0) ahk-indentation)))
+        (setq indent (- indent (if prev-single (- (* 2 ahk-indentation-offset)) 0) ahk-indentation-offset)))
       )
     ;; set negative indentation to 0
     (save-excursion
@@ -443,100 +465,72 @@ if-else: %s, l: %s, kb: %s, ret: %s, bl: %s"
       (ahk-indent-line)
       (forward-line 1))))
 
-;;;; commenting
+
+;;; imenu support
+(defconst ahk-imenu-generic-expression
+  '(("Functions"   "^[ \t]*\\([^ ]+\\)(.*)[\n]{" 1)
+    ("Labels"      "^[ \t]*\\([^:;]+\\):\n" 1)
+    ("Keybindings" "^[ \t]*\\([^;: \t\r\n\v\f].*?\\)::" 1)
+    ("Hotstrings" "^[ \t]*\\(:.*?:.*?::\\)" 1)
+    ("Comments"    "^;imenu \\(.+\\)" 1))
+  "imenu index for `ahk-mode'")
 
-(defun ahk-comment-dwim (arg)
-  "Comment or uncomment current line or region in a smart way.
-For details, see `comment-dwim'."
-  (interactive "*P")
-  (require 'newcomment)
-  (let ((comment-start ";")
-        (comment-end ""))
-    (comment-dwim arg)))
+
+;;; Navigation
 
-(defun ahk-comment-block-dwim (arg)
-  "Comment or uncomment current line or region using block notation.
-For details, see `comment-dwim'."
-  (interactive "*P")
-  (require 'newcomment)
-  (let ((comment-style 'extra-line)
-        (comment-start "/*")
-        (comment-end "*/"))
-    (comment-dwim arg)))
+
+;;; Action
 
-;;; font-lock
+(defun ahk-run-script ()
+  "Run the ahk-script in the current buffer."
+  (interactive)
+  (let ((file (shell-quote-argument
+               (replace-regexp-in-string " " "\ "
+                                         (replace-regexp-in-string "\/" "\\\\" (buffer-file-name) t t)))))
+    (message "Executing script %s" file)
+    (w32-shell-execute "open" file)))
 
-(defvar ahk-commands
-  '("Abort" "AboveNormal" "Add" "All" "Alnum" "Alpha" "AltSubmit" "AlwaysOnTop" "And" "Asc" "AutoSize" "AutoTrim" "Background" "BackgroundTrans" "BelowNormal" "Between" "BitAnd" "BitNot" "BitOr" "BitShiftLeft" "BitShiftRight" "BitXOr" "BlockInput" "Border" "Bottom" "Break" "Button" "Buttons" "ByRef" "Cancel" "Capacity" "Caption" "Catch" "Ceil" "Center" "Check" "Check3" "Checkbox" "Checked" "CheckedGray" "Checks" "Choose" "ChooseString" "Chr" "Click" "ClipWait" "Close" "Color" "ComboBox" "Contains" "Continue" "Control" "ControlClick" "ControlFocus" "ControlGet" "ControlGetFocus" "ControlGetPos" "ControlGetText" "ControlList" "ControlMove" "ControlSend" "ControlSendRaw" "ControlSetText" "CoordMode" "Count" "Critical" "DDL" "Date" "DateTime" "Days" "Default" "Delete" "DeleteAll" "Delimiter" "Deref" "Destroy" "DetectHiddenText" "DetectHiddenWindows" "Digit" "Disable" "Disabled" "Displays" "Drive" "DriveGet" "DriveSpaceFree" "DropDownList" "Edit" "Eject" "Else" "Enable" "Enabled" "EnvAdd" "EnvDiv" "EnvGet" "EnvMult" "EnvSet" "EnvSub" "EnvUpdate" "Error" "ExStyle" "Exist" "Exit" "ExitApp" "Exp" "Expand" "FileAppend" "FileCopy" "FileCopyDir" "FileCreateDir" "FileCreateShortcut" "FileDelete" "FileEncoding" "FileGetAttrib" "FileGetShortcut" "FileGetSize" "FileGetTime" "FileGetVersion" "FileInstall" "FileMove" "FileMoveDir" "FileOpen" "FileRead" "FileReadLine" "FileRecycle" "FileRecycleEmpty" "FileRemoveDir" "FileSelectFile" "FileSelectFolder" "FileSetAttrib" "FileSetTime" "FileSystem" "Finally" "First" "Flash" "Float" "FloatFast" "Floor" "Focus" "Font" "For" "Format" "FormatTime" "GetKeyState" "Gosub" "Goto" "Grid" "Group" "GroupActivate" "GroupAdd" "GroupBox" "GroupClose" "GroupDeactivate" "Gui" "GuiClose" "GuiContextMenu" "GuiControl" "GuiControlGet" "GuiDropFiles" "GuiEscape" "GuiSize" "HKCC" "HKCR" "HKCU" "HKEY_CLASSES_ROOT" "HKEY_CURRENT_CONFIG" "HKEY_CURRENT_USER" "HKEY_LOCAL_MACHINE" "HKEY_USERS" "HKLM" "HKU" "HScroll" "Hdr" "Hidden" "Hide" "High" "Hotkey" "Hours" "ID" "IDLast" "Icon" "IconSmall" "If" "IfEqual" "IfExist" "IfGreater" "IfGreaterOrEqual" "IfInString" "IfLess" "IfLessOrEqual" "IfMsgBox" "IfNotEqual" "IfWinActive" "IfWinExist" "IfWinNotActive" "IfWinNotExist" "Ignore" "ImageList" "ImageSearch" "In" "IniDelete" "IniRead" "IniWrite" "Input" "InputBox" "Integer" "IntegerFast" "Interrupt" "Is" "Join" "KeyHistory" "KeyWait" "LTrim" "Label" "LastFound" "LastFoundExist" "Left" "Limit" "Lines" "List" "ListBox" "ListHotkeys" "ListLines" "ListVars" "ListView" "Ln" "Lock" "Log" "Logoff" "Loop" "Low" "Lower" "Lowercase" "MainWindow" "Margin" "MaxSize" "Maximize" "MaximizeBox" "Menu" "MinMax" "MinSize" "Minimize" "MinimizeBox" "Minutes" "Mod" "MonthCal" "Mouse" "MouseClick" "MouseClickDrag" "MouseGetPos" "MouseMove" "Move" "MsgBox" "Multi" "NA" "No" "NoActivate" "NoDefault" "NoHide" "NoIcon" "NoMainWindow" "NoSort" "NoSortHdr" "NoStandard" "NoTab" "NoTimers" "Normal" "Not" "Number" "Off" "Ok" "On" "OnExit" "Or" "OutputDebug" "OwnDialogs" "Owner" "Parse" "Password" "Pause" "Pic" "Picture" "Pixel" "PixelGetColor" "PixelSearch" "Pos" "PostMessage" "Pow" "Priority" "Process" "ProcessName" "Progress" "REG_BINARY" "REG_DWORD" "REG_EXPAND_SZ" "REG_MULTI_SZ" "REG_SZ" "RGB" "RTrim" "Radio" "Random" "Range" "Read" "ReadOnly" "Realtime" "Redraw" "RegDelete" "RegRead" "RegWrite" "Region" "Relative" "Reload" "Rename" "Report" "Resize" "Restore" "Retry" "Return" "Right" "Round" "Run" "RunAs" "RunWait" "Screen" "Seconds" "Section" "See" "Send" "SendInput" "SendLevel" "SendMessage" "SendMode" "SendPlay" "SendRaw" "Serial" "SetBatchLines" "SetCapslockState" "SetControlDelay" "SetDefaultMouseSpeed" "SetEnv" "SetFormat" "SetKeyDelay" "SetLabel" "SetMouseDelay" "SetNumlockState" "SetRegView" "SetScrollLockState" "SetStoreCapslockMode" "SetTimer" "SetTitleMatchMode" "SetWinDelay" "SetWorkingDir" "ShiftAltTab" "Show" "Shutdown" "Sin" "Single" "Sleep" "Slider" "Sort" "SortDesc" "SoundBeep" "SoundGet" "SoundGetWaveVolume" "SoundPlay" "SoundSet" "SoundSetWaveVolume" "SplashImage" "SplashTextOff" "SplashTextOn" "SplitPath" "Sqrt" "Standard" "Status" "StatusBar" "StatusBarGetText" "StatusBarWait" "StatusCD" "StringCaseSense" "StringGetPos" "StringLeft" "StringLen" "StringLower" "StringMid" "StringReplace" "StringRight" "StringSplit" "StringTrimLeft" "StringTrimRight" "StringUpper" "Style" "Submit" "Suspend" "SysGet" "SysMenu" "Tab" "Tab2" "TabStop" "Tan" "Text" "Theme" "Thread" "Throw" "Tile" "Time" "Tip" "ToggleCheck" "ToggleEnable" "ToolTip" "ToolWindow" "Top" "Topmost" "TransColor" "Transform" "Transparent" "Tray" "TrayTip" "TreeView" "Trim" "Try" "TryAgain" "Type" "UnCheck" "Unicode" "Unlock" "Until" "UpDown" "Upper" "Uppercase" "UrlDownloadToFile" "UseErrorLevel" "VScroll" "Var" "Vis" "VisFirst" "Visible" "Wait" "WaitClose" "WantCtrlA" "WantF2" "WantReturn" "While" "WinActivate" "WinActivateBottom" "WinClose" "WinGet" "WinGetActiveStats" "WinGetActiveTitle" "WinGetClass" "WinGetPos" "WinGetText" "WinGetTitle" "WinHide" "WinKill" "WinMaximize" "WinMenuSelectItem" "WinMinimize" "WinMinimizeAll" "WinMinimizeAllUndo" "WinMove" "WinRestore" "WinSet" "WinSetTitle" "WinShow" "WinWait" "WinWaitActive" "WinWaitClose" "WinWaitNotActive" "Wrap" "Xdigit" "Yes" "ahk_class" "ahk_group" "ahk_id" "ahk_pid" "bold" "global" "italic" "local" "norm" "static" "strike" "underline" "xm" "xp" "xs" "ym" "yp" "ys")
-  "AHK keywords.")
+(defun ahk-command-at-point ()
+  "Determine command at point, and prompt if nothing found."
+  (let ((command (or (if (region-active-p)
+                         (buffer-substring-no-properties
+                          (region-beginning)
+                          (region-end))
+                       (thing-at-point 'symbol))
+                     (read-string "Command: "))))
+    command))
 
-(defvar ahk-directives
-  '("#ClipboardTimeout" "#CommentFlag" "#ErrorStdOut" "#EscapeChar" "#HotkeyInterval" "#HotkeyModifierTimeout" "#Hotstring" "#If" "#IfTimeout" "#IfWinActive" "#IfWinExist" "#Include" "#InputLevel" "#InstallKeybdHook" "#InstallMouseHook" "#KeyHistory" "#LTrim" "#MaxHotkeysPerInterval" "#MaxMem" "#MaxThreads" "#MaxThreadsBuffer" "#MaxThreadsPerHotkey" "#MenuMaskKey" "#NoEnv" "#NoTrayIcon" "#Persistent" "#SingleInstance" "#UseHook" "#Warn" "#WinActivateForce")
-  "AHK directives")
+(defun ahk-lookup-web ()
+  "Look up current word in AutoHotkey's reference doc.
+Launches default browser and opens the doc's url."
+  (interactive)
+  (let* ((acap (ahk-command-at-point))
+         (url (concat "http://ahkscript.org/docs/commands/" acap ".htm")))
+    (browse-url url)))
 
-(defvar ahk-functions
-  '("ACos" "ASin" "ATan" "Abs" "Asc" "Ceil" "Chr" "ComObjActive" "ComObjArray" "ComObjConnect" "ComObjCreate" "ComObjEnwrap" "ComObjError" "ComObjFlags" "ComObjGet" "ComObjMissing" "ComObjParameter" "ComObjQuery" "ComObjType" "ComObjUnwrap" "ComObjValue" "Cos" "DllCall" "Exp" "FileExist" "Floor" "Func" "Functions" "GetKeyName" "GetKeySC" "GetKeyState" "GetKeyVK" "IL_Add" "IL_Create" "IL_Destroy" "InStr" "IsByRef" "IsFunc" "IsLabel" "IsObject" "LV_Add" "LV_Delete" "LV_DeleteCol" "LV_GetCount" "LV_GetNext" "LV_GetText" "LV_Insert" "LV_InsertCol" "LV_Modify" "LV_ModifyCol" "LV_SetImageList" "Ln" "Log" "Mod" "NumGet" "NumPut" "OnMessage" "RegExMatch" "RegExReplace" "RegisterCallback" "Round" "SB_SetIcon" "SB_SetParts" "SB_SetText" "Sin" "Sqrt" "StrGet" "StrLen" "StrPut" "SubStr" "TV_Add" "TV_Delete" "TV_Get" "TV_GetChild" "TV_GetCount" "TV_GetNext" "TV_GetParent" "TV_GetPrev" "TV_GetSelection" "TV_GetText" "TV_Modify" "Tan" "VarSetCapacity" "WinActive" "WinExist")
-  "AHK functions.")
+(defun ahk-lookup-chm ()
+  "Look up current word in AutoHotkey's reference doc.
+Finds the command in the internal AutoHotkey documentation."
+  (interactive)
+  (let* ((acap (ahk-command-at-point))
+         (chm-path
+          (or (and (file-exists-p "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
+                   "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
+              (and (file-exists-p "c:/Program Files/AutoHotkey/AutoHotkey.chm")
+                   "c:/Program Files/AutoHotkey/AutoHotkey.chm")
+              (and (file-exists-p (concat ahk-path "/AutoHotkey.chm"))
+                   (concat ahk-path "/AutoHotkey.chm")))))
+    (if chm-path
+        (when acap (message "Opening help item for \"%s\"" acap)
+              (w32-shell-execute 1 "hh.exe"
+                                 (format
+                                  "ms-its:%s::/docs/commands/%s.htm"
+                                  chm-path acap)))
+      (message "Help file could not be found, set ahk-path variable."))))
 
-(defvar ahk-variables
-  '("A_AhkPath" "A_AhkVersion" "A_AppData" "A_AppDataCommon" "A_AutoTrim" "A_BatchLines" "A_CaretX" "A_CaretY" "A_ComputerName" "A_ControlDelay" "A_Cursor" "A_DD" "A_DDD" "A_DDDD" "A_DefaultMouseSpeed" "A_Desktop" "A_DesktopCommon" "A_DetectHiddenText" "A_DetectHiddenWindows" "A_EndChar" "A_EventInfo" "A_ExitReason" "A_FileEncoding" "A_FormatFloat" "A_FormatInteger" "A_Gui" "A_GuiControl" "A_GuiControlEvent" "A_GuiEvent" "A_GuiHeight" "A_GuiWidth" "A_GuiX" "A_GuiY" "A_Hour" "A_IPAddress1" "A_IPAddress2" "A_IPAddress3" "A_IPAddress4" "A_ISAdmin" "A_IconFile" "A_IconHidden" "A_IconNumber" "A_IconTip" "A_Index" "A_Is64bitOS" "A_IsAdmin" "A_IsCompiled" "A_IsCritical" "A_IsPaused" "A_IsSuspended" "A_IsUnicode" "A_KeyDelay" "A_Language" "A_LastError" "A_LineFile" "A_LineNumber" "A_LoopField" "A_LoopFileAttrib" "A_LoopFileDir" "A_LoopFileExt" "A_LoopFileFullPath" "A_LoopFileLongPath" "A_LoopFileName" "A_LoopFileName," "A_LoopFileShortName" "A_LoopFileShortPath" "A_LoopFileSize" "A_LoopFileSizeKB" "A_LoopFileSizeMB" "A_LoopFileTimeAccessed" "A_LoopFileTimeCreated" "A_LoopFileTimeModified" "A_LoopReadLine" "A_LoopRegKey" "A_LoopRegName" "A_LoopRegName," "A_LoopRegSubkey" "A_LoopRegTimeModified" "A_LoopRegType" "A_MDAY" "A_MM" "A_MMM" "A_MMMM" "A_MSec" "A_Min" "A_Mon" "A_MouseDelay" "A_MyDocuments" "A_Now" "A_NowUTC" "A_NumBatchLines" "A_OSType" "A_OSVersion" "A_PriorHotkey" "A_PriorKey" "A_ProgramFiles" "A_Programs" "A_ProgramsCommon" "A_PtrSize" "A_RegView" "A_ScreenDPI" "A_ScreenHeight" "A_ScreenWidth" "A_ScriptDir" "A_ScriptFullPath" "A_ScriptHwnd" "A_ScriptName" "A_Sec" "A_Space" "A_StartMenu" "A_StartMenuCommon" "A_Startup" "A_StartupCommon" "A_StringCaseSense" "A_Tab" "A_Temp" "A_ThisFunc" "A_ThisHotkey" "A_ThisLabel" "A_ThisMenu" "A_ThisMenuItem" "A_ThisMenuItemPos" "A_TickCount" "A_TimeIdle" "A_TimeIdlePhysical" "A_TimeSincePriorHotkey" "A_TimeSinceThisHotkey" "A_TitleMatchMode" "A_TitleMatchModeSpeed" "A_UserName" "A_WDay" "A_WinDelay" "A_WinDir" "A_WorkingDir" "A_YDay" "A_YEAR" "A_YWeek" "A_YYYY" "Clipboard" "ClipboardAll" "ComSpec" "ErrorLevel" "False" "ProgramFiles" "True" "Variable")
-  "AHK variables.")
+
+;; Symbol completion
 
-(defvar ahk-keys
-  '("Alt" "AltDown" "AltTab" "AltTabAndMenu" "AltTabMenu" "AltTabMenuDismiss" "AltUp" "AppsKey" "BS" "BackSpace" "Browser_Back" "Browser_Favorites" "Browser_Forward" "Browser_Home" "Browser_Refresh" "Browser_Search" "Browser_Stop" "CapsLock" "Control" "Ctrl" "CtrlBreak" "CtrlDown" "CtrlUp" "Del" "Delete" "Down" "End" "Enter" "Esc" "Escape" "F1" "F10" "F11" "F12" "F13" "F14" "F15" "F16" "F17" "F18" "F19" "F2" "F20" "F21" "F22" "F23" "F24" "F3" "F4" "F5" "F6" "F7" "F8" "F9" "Home" "Ins" "Insert" "Joy1" "Joy10" "Joy11" "Joy12" "Joy13" "Joy14" "Joy15" "Joy16" "Joy17" "Joy18" "Joy19" "Joy2" "Joy20" "Joy21" "Joy22" "Joy23" "Joy24" "Joy25" "Joy26" "Joy27" "Joy28" "Joy29" "Joy3" "Joy30" "Joy31" "Joy32" "Joy4" "Joy5" "Joy6" "Joy7" "Joy8" "Joy9" "JoyAxes" "JoyButtons" "JoyInfo" "JoyName" "JoyPOV" "JoyR" "JoyU" "JoyV" "JoyX" "JoyY" "JoyZ" "LAlt" "LButton" "LControl" "LCtrl" "LShift" "LWin" "LWinDown" "LWinUp" "Launch_App1" "Launch_App2" "Launch_Mail" "Launch_Media" "Left" "MButton" "Media_Next" "Media_Play_Pause" "Media_Prev" "Media_Stop" "NumLock" "Numpad0" "Numpad1" "Numpad2" "Numpad3" "Numpad4" "Numpad5" "Numpad6" "Numpad7" "Numpad8" "Numpad9" "NumpadAdd" "NumpadClear" "NumpadDel" "NumpadDiv" "NumpadDot" "NumpadDown" "NumpadEnd" "NumpadEnter" "NumpadHome" "NumpadIns" "NumpadLeft" "NumpadMult" "NumpadPgdn" "NumpadPgup" "NumpadRight" "NumpadSub" "NumpadUp" "PGDN" "PGUP" "Pause" "PrintScreen" "RAlt" "RButton" "RControl" "RCtrl" "RShift" "RWin" "RWinDown" "RWinUp" "Right" "ScrollLock" "Shift" "ShiftDown" "ShiftUp" "Space" "Tab" "Up" "Volume_Down" "Volume_Mute" "Volume_Up" "WheelDown" "WheelLeft" "WheelRight" "WheelUp" "XButton1" "XButton2")
-  "AHK keywords for keys.")
-
-(defvar ahk-operator-words
-  '("AND" "NOT" "OR")
-  "AHK operator words.")
-
-(defvar ahk-operators
-  '("\\!" "!=" "&" "&&" "&=" "*" "**" "*=" "+" "++" "+=" "-" "--" "-=" "." "." ".=" "/" "//" "//=" "/=" ":=" "<" "<<" "<<=" "<=" "<>" "=" "==" ">" ">=" ">>" ">>=" "?:" "^" "^=" "|" "|=" "||" "~" "~=" ",")
-  "AHK operators.")
-
-(defvar ahk-commands-regexp (regexp-opt ahk-commands 'words))
-(defvar ahk-functions-regexp (regexp-opt ahk-functions 'words))
-(defvar ahk-directives-regexp (regexp-opt ahk-directives 'words))
-(defvar ahk-variables-regexp (regexp-opt ahk-variables 'words))
-(defvar ahk-keys-regexp (regexp-opt ahk-keys 'words))
-(defvar ahk-operator-words-regexp (regexp-opt ahk-operator-words 'words))
-(defvar ahk-operators-regexp (regexp-opt ahk-operators))
-
-(defvar ahk-double-quote-string-re "[\"]\\(\\\\.\\|[^\"\n]\\)*[\"]"
-  "Regexp used to match a double-quoted string literal")
-
-(defvar ahk-single-quote-string-re "[']\\(\\\\.\\|[^'\n]\\)*[']"
-  "Regexp used to match a single-quoted string literal")
-
-(defvar ahk-font-lock-keywords
-  `(("\\s-*;.*$"                      . font-lock-comment-face)
-    ;; lLTrim0 usage
-    ("(LTrim0\\(.*\n\\)+"            . font-lock-string-face)
-    (,ahk-double-quote-string-re . font-lock-string-face)
-    (,ahk-single-quote-string-re . font-lock-string-face)
-    ;; block comments
-    ("^/\\*\\(.*\r?\n\\)*\\(\\*/\\)?" . font-lock-comment-face)
-    ;; bindings
-    ("^\\([^\t\n:=]+\\)::"            . (1 font-lock-constant-face))
-    ;; labels
-    ("^\\([^\t\n :=]+\\):[^=]"        . (1 font-lock-doc-face))
-    ;; return
-    ("\\<\\([Rr]eturn\\)\\>"          . font-lock-warning-face)
-    ;; functions
-    ("^\\([^\t\n (]+\\)\\((.*)\\)"    . (1 font-lock-function-name-face))
-    ;; variables
-    ("%[^% ]+%"                       . font-lock-variable-name-face)
-    (,ahk-commands-regexp             . font-lock-keyword-face)
-    (,ahk-functions-regexp            . font-lock-function-name-face)
-    (,ahk-directives-regexp           . font-lock-preprocessor-face)
-    (,ahk-variables-regexp            . font-lock-variable-name-face)
-    (,ahk-keys-regexp                 . font-lock-constant-face)
-    (,ahk-operator-words-regexp       . font-lock-builtin-face)
-    (,ahk-operators-regexp . font-lock-builtin-face)
-    ;; note: order matters
-    ))
-
-;; keyword completion
 (defvar ahk-kwd-list (make-hash-table :test 'equal)
   "AHK keywords.")
 
@@ -596,26 +590,8 @@ For details, see `comment-dwim'."
     (symbol . "d"))
   "Completion for AHK directives mode")
 
-;; clear memory
-;; (setq ahk-commands nil)
-;; (setq ahk-functions nil)
-;; (setq ahk-directives nil)
-;; (setq ahk-variables nil)
-;; (setq ahk-keys nil)
-
-(defun ahk-font-lock-extend-region ()
-  "Extend the search region to include an entire block of text."
-  ;; Avoid compiler warnings about these global variables from font-lock.el.
-  ;; See the documentation for variable `font-lock-extend-region-functions'.
-  (eval-when-compile (defvar font-lock-beg) (defvar font-lock-end))
-  (save-excursion
-    (goto-char font-lock-beg)
-    (let ((found (or (re-search-backward "(LTrim0" nil t) (point-min))))
-      (goto-char font-lock-end)
-      (when (re-search-forward "\n)" nil t)
-        (beginning-of-line)
-        (setq font-lock-end (point)))
-      (setq font-lock-beg found))))
+
+;;; Utility functions
 
 (defun ahk-ltrim-blocks ()
   "Match JavaScript blocks from the point to LAST."
@@ -627,49 +603,16 @@ For details, see `comment-dwim'."
                  (t nil))))
         (t nil)))
 
+
+;;; Major mode
+
 ;;;###autoload
-(define-derived-mode ahk-mode prog-mode "AutoHotkey Mode"
-  "Major mode for editing AutoHotkey script (AHK).
+(define-derived-mode ahk-mode prog-mode "AutoHotkey"
+  "Major mode for editing AutoHotkey (AHK) script files.
 
-The hook functions in `ahk-mode-hook' are run after mode initialization.
-
-Key Bindings
 \\{ahk-mode-map}"
-  (kill-all-local-variables)
-
-  (set-syntax-table ahk-mode-syntax-table)
-
-  (setq major-mode 'ahk-mode
-        mode-name "AHK"
-        local-abbrev-table ahk-mode-abbrev-table)
-
-  ;; ui
-  (use-local-map ahk-mode-map)
-  (easy-menu-add ahk-menu)
-
-  ;; imenu
-  (setq-local imenu-generic-expression ahk-imenu-generic-expression)
-  (setq-local imenu-sort-function 'imenu--sort-by-position)
-
-  ;; font-lock
-  (make-local-variable 'font-lock-defaults)
-  (setq font-lock-defaults '((ahk-font-lock-keywords) nil t))
-  ;; (set (make-local-variable 'font-lock-multiline) t)
-  ;; (add-hook 'font-lock-extend-region-functions
-  ;;           'ahk-font-lock-extend-region)
-  ;; (setq syntax-propertize-function)
-
-  ;; clear memory
-  ;; (setq ahk-commands-regexp nil)
-  ;; (setq ahk-functions-regexp nil)
-  ;; (setq ahk-variables-regexp nil)
-  ;; (setq ahk-keys-regexp nil)
-
-  (if (boundp 'evil-shift-width)
-      (setq-local evil-shift-width ahk-indentation))
-
-  (setq-local comment-start ";")
-  (setq-local comment-end   "")
+  :syntax-table ahk-mode-syntax-table
+  (setq-local comment-start "; ")
   (setq-local comment-start-skip ";+ *")
 
   (setq-local block-comment-start     "/*")
@@ -680,17 +623,18 @@ Key Bindings
   (setq-local block-comment-bot-left  " ")
   (setq-local block-comment-char      ?*)
 
-  (setq-local indent-line-function   'ahk-indent-line)
+  (setq-local indent-line-function 'ahk-indent-line)
   (setq-local indent-region-function 'ahk-indent-region)
 
   (setq-local parse-sexp-ignore-comments t)
   (setq-local parse-sexp-lookup-properties t)
+  
   (setq-local paragraph-start (concat "$\\|" page-delimiter))
   (setq-local paragraph-separate paragraph-start)
   (setq-local paragraph-ignore-fill-prefix t)
 
-  ;; completion
-  (setq-local company-tooltip-align-annotations t)
+  ;; TODO: beginning-of-defun
+
   (add-hook 'completion-at-point-functions 'ahk-completion-at-point nil t)
 
   (eval-after-load "auto-complete"
@@ -701,7 +645,12 @@ Key Bindings
          (add-to-list 'ac-sources  'ac-source-directives-ahk)
          (add-to-list 'ac-sources  'ac-source-keys-ahk))))
 
-  (run-mode-hooks 'ahk-mode-hook))
+  (setq-local font-lock-defaults `(,ahk-font-lock-keywords
+                                   nil nil))
+  (setq-local imenu-generic-expression ahk-imenu-generic-expression)
+  (setq-local imenu-sort-function 'imenu--sort-by-position)
+  
+  (add-to-list 'auto-mode-alist '("\\.ahk\\'" . ahk-mode)))
 
 (when ahk-debug
   (mapc (lambda (buffer)
@@ -711,6 +660,8 @@ Key Bindings
               (font-lock-mode -1)
               (ahk-mode))))
         (buffer-list)))
+
+;; TODO change ^!# into C- M- S-
 
 (provide 'ahk-mode)
 
