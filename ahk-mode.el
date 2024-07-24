@@ -33,6 +33,7 @@
 
 ;;; Requirements
 
+(require 'font-lock)
 (require 'thingatpt)
 (require 'rx)
 (require 'smie)
