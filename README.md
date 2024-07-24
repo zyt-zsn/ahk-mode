@@ -1,8 +1,8 @@
 # ahk-mode
 
-An Emacs major mode for editing (AutoHotkey)[https://autohotkey.com/] (AHK) script files.
+An Emacs major mode for editing [AutoHotKey](https://autohotkey.com/) (AHK) script files.
 
-forked form (ahk-mode)[https://github.com/punassuming/ahk-mode], to fit in personal usage.
+forked form [ahk-mode](https://github.com/punassuming/ahk-mode), to fit in personal usage.
 
 ## Installation
 
@@ -21,7 +21,7 @@ Clone this repository, then add to your load-path then require:
 
 ## Usage
 
-download (ahk2-lsp)[https://github.com/thqby/vscode-autohotkey2-lsp] for completion:
+download [ahk2-lsp](https://github.com/thqby/vscode-autohotkey2-lsp) for completion:
 
 ``` powershell
 mkdir vscode-autohotkey2-lsp
