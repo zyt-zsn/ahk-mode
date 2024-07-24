@@ -54,8 +54,8 @@
 (defvar ahk-mode-map
   (let ((map (make-sparse-keymap)))
     ;; key bindings
-    (define-key map (kbd "C-c C-?") #'ahk-lookup-web)
-    (define-key map (kbd "C-c C-r") #'ahk-lookup-chm)
+    (define-key map (kbd "C-c d") #'ahk-lookup-web)
+    (define-key map (kbd "C-c h") #'ahk-lookup-chm)
     (define-key map (kbd "C-c C-c") #'ahk-run-script)
     (easy-menu-define ahk-menu map "AHK Mode menu"
       '("AHK"
@@ -68,8 +68,6 @@
 
 
 ;;; Font-lock and syntax
-
-;; TODO: call `SetTimer' at colomn 0 will be recognized as new function definition
 
 (defvar ahk-commands
   '("Abort" "AboveNormal" "Add" "All" "Alnum" "Alpha" "AltSubmit" "AlwaysOnTop" "And" "Asc" "AutoSize" "AutoTrim" "Background" "BackgroundTrans" "BelowNormal" "Between" "BitAnd" "BitNot" "BitOr" "BitShiftLeft" "BitShiftRight" "BitXOr" "BlockInput" "Border" "Bottom" "Break" "Button" "Buttons" "ByRef" "Cancel" "Capacity" "Caption" "Catch" "Ceil" "Center" "Check" "Check3" "Checkbox" "Checked" "CheckedGray" "Checks" "Choose" "ChooseString" "Chr" "Click" "ClipWait" "Close" "Color" "ComboBox" "Contains" "Continue" "Control" "ControlClick" "ControlFocus" "ControlGet" "ControlGetFocus" "ControlGetPos" "ControlGetText" "ControlList" "ControlMove" "ControlSend" "ControlSendRaw" "ControlSetText" "CoordMode" "Count" "Critical" "DDL" "Date" "DateTime" "Days" "Default" "Delete" "DeleteAll" "Delimiter" "Deref" "Destroy" "DetectHiddenText" "DetectHiddenWindows" "Digit" "Disable" "Disabled" "Displays" "Drive" "DriveGet" "DriveSpaceFree" "DropDownList" "Edit" "Eject" "Else" "Enable" "Enabled" "EnvAdd" "EnvDiv" "EnvGet" "EnvMult" "EnvSet" "EnvSub" "EnvUpdate" "Error" "ExStyle" "Exist" "Exit" "ExitApp" "Exp" "Expand" "FileAppend" "FileCopy" "FileCopyDir" "FileCreateDir" "FileCreateShortcut" "FileDelete" "FileEncoding" "FileGetAttrib" "FileGetShortcut" "FileGetSize" "FileGetTime" "FileGetVersion" "FileInstall" "FileMove" "FileMoveDir" "FileOpen" "FileRead" "FileReadLine" "FileRecycle" "FileRecycleEmpty" "FileRemoveDir" "FileSelectFile" "FileSelectFolder" "FileSetAttrib" "FileSetTime" "FileSystem" "Finally" "First" "Flash" "Float" "FloatFast" "Floor" "Focus" "Font" "For" "Format" "FormatTime" "GetKeyState" "Gosub" "Goto" "Grid" "Group" "GroupActivate" "GroupAdd" "GroupBox" "GroupClose" "GroupDeactivate" "Gui" "GuiClose" "GuiContextMenu" "GuiControl" "GuiControlGet" "GuiDropFiles" "GuiEscape" "GuiSize" "HKCC" "HKCR" "HKCU" "HKEY_CLASSES_ROOT" "HKEY_CURRENT_CONFIG" "HKEY_CURRENT_USER" "HKEY_LOCAL_MACHINE" "HKEY_USERS" "HKLM" "HKU" "HScroll" "Hdr" "Hidden" "Hide" "High" "Hotkey" "Hours" "ID" "IDLast" "Icon" "IconSmall" "If" "IfEqual" "IfExist" "IfGreater" "IfGreaterOrEqual" "IfInString" "IfLess" "IfLessOrEqual" "IfMsgBox" "IfNotEqual" "IfWinActive" "IfWinExist" "IfWinNotActive" "IfWinNotExist" "Ignore" "ImageList" "ImageSearch" "In" "IniDelete" "IniRead" "IniWrite" "Input" "InputBox" "Integer" "IntegerFast" "Interrupt" "Is" "Join" "KeyHistory" "KeyWait" "LTrim" "Label" "LastFound" "LastFoundExist" "Left" "Limit" "Lines" "List" "ListBox" "ListHotkeys" "ListLines" "ListVars" "ListView" "Ln" "Lock" "Log" "Logoff" "Loop" "Low" "Lower" "Lowercase" "MainWindow" "Margin" "MaxSize" "Maximize" "MaximizeBox" "Menu" "MinMax" "MinSize" "Minimize" "MinimizeBox" "Minutes" "Mod" "MonthCal" "Mouse" "MouseClick" "MouseClickDrag" "MouseGetPos" "MouseMove" "Move" "MsgBox" "Multi" "NA" "No" "NoActivate" "NoDefault" "NoHide" "NoIcon" "NoMainWindow" "NoSort" "NoSortHdr" "NoStandard" "NoTab" "NoTimers" "Normal" "Not" "Number" "Off" "Ok" "On" "OnExit" "Or" "OutputDebug" "OwnDialogs" "Owner" "Parse" "Password" "Pause" "Pic" "Picture" "Pixel" "PixelGetColor" "PixelSearch" "Pos" "PostMessage" "Pow" "Priority" "Process" "ProcessName" "Progress" "REG_BINARY" "REG_DWORD" "REG_EXPAND_SZ" "REG_MULTI_SZ" "REG_SZ" "RGB" "RTrim" "Radio" "Random" "Range" "Read" "ReadOnly" "Realtime" "Redraw" "RegDelete" "RegRead" "RegWrite" "Region" "Relative" "Reload" "Rename" "Report" "Resize" "Restore" "Retry" "Return" "Right" "Round" "Run" "RunAs" "RunWait" "Screen" "Seconds" "Section" "See" "Send" "SendInput" "SendLevel" "SendMessage" "SendMode" "SendPlay" "SendRaw" "Serial" "SetBatchLines" "SetCapslockState" "SetControlDelay" "SetDefaultMouseSpeed" "SetEnv" "SetFormat" "SetKeyDelay" "SetLabel" "SetMouseDelay" "SetNumlockState" "SetRegView" "SetScrollLockState" "SetStoreCapslockMode" "SetTimer" "SetTitleMatchMode" "SetWinDelay" "SetWorkingDir" "ShiftAltTab" "Show" "Shutdown" "Sin" "Single" "Sleep" "Slider" "Sort" "SortDesc" "SoundBeep" "SoundGet" "SoundGetWaveVolume" "SoundPlay" "SoundSet" "SoundSetWaveVolume" "SplashImage" "SplashTextOff" "SplashTextOn" "SplitPath" "Sqrt" "Standard" "Status" "StatusBar" "StatusBarGetText" "StatusBarWait" "StatusCD" "StringCaseSense" "StringGetPos" "StringLeft" "StringLen" "StringLower" "StringMid" "StringReplace" "StringRight" "StringSplit" "StringTrimLeft" "StringTrimRight" "StringUpper" "Style" "Submit" "Suspend" "SysGet" "SysMenu" "Tab" "Tab2" "TabStop" "Tan" "Text" "Theme" "Thread" "Throw" "Tile" "Time" "Tip" "ToggleCheck" "ToggleEnable" "ToolTip" "ToolWindow" "Top" "Topmost" "TransColor" "Transform" "Transparent" "Tray" "TrayTip" "TreeView" "Trim" "Try" "TryAgain" "Type" "UnCheck" "Unicode" "Unlock" "Until" "UpDown" "Upper" "Uppercase" "UrlDownloadToFile" "UseErrorLevel" "VScroll" "Var" "Vis" "VisFirst" "Visible" "Wait" "WaitClose" "WantCtrlA" "WantF2" "WantReturn" "While" "WinActivate" "WinActivateBottom" "WinClose" "WinGet" "WinGetActiveStats" "WinGetActiveTitle" "WinGetClass" "WinGetPos" "WinGetText" "WinGetTitle" "WinHide" "WinKill" "WinMaximize" "WinMenuSelectItem" "WinMinimize" "WinMinimizeAll" "WinMinimizeAllUndo" "WinMove" "WinRestore" "WinSet" "WinSetTitle" "WinShow" "WinWait" "WinWaitActive" "WinWaitClose" "WinWaitNotActive" "Wrap" "Xdigit" "Yes" "ahk_class" "ahk_group" "ahk_id" "ahk_pid" "bold" "global" "italic" "local" "norm" "static" "strike" "underline" "xm" "xp" "xs" "ym" "yp" "ys")
@@ -196,7 +194,7 @@
     (message "Executing script %s" file)
     (w32-shell-execute "open" file)))
 
-(defun ahk-command-at-point ()
+(defun ahk-symbol-at-point ()
   "Determine command at point, and prompt if nothing found."
   (let ((command (or (if (region-active-p)
                          (buffer-substring-no-properties
@@ -210,28 +208,32 @@
   "Look up current word in AutoHotkey's reference doc.
 Launches default browser and opens the doc's url."
   (interactive)
-  (let* ((acap (ahk-command-at-point))
-         (url (concat "http://ahkscript.org/docs/commands/" acap ".htm")))
+  (let* ((name (ahk-symbol-at-point))
+         (name (string-replace "#" "_" name))
+         (url (concat "https://www.autohotkey.com/docs/v2/lib/" name ".htm")))
     (browse-url url)))
 
 (defun ahk-lookup-chm ()
   "Look up current word in AutoHotkey's reference doc.
 Finds the command in the internal AutoHotkey documentation."
   (interactive)
-  (let* ((acap (ahk-command-at-point))
+  (let* ((name (ahk-symbol-at-point))
+         (name (string-replace "#" "_" name))
          (chm-path
-          (or (and (file-exists-p "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
-                   "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
-              (and (file-exists-p "c:/Program Files/AutoHotkey/AutoHotkey.chm")
-                   "c:/Program Files/AutoHotkey/AutoHotkey.chm")
+          (or (and (file-exists-p "~/scoop/apps/autohotkey/current/v2/AutoHotkey.chm")
+                   (file-truename "~/scoop/apps/autohotkey/current/v2/AutoHotkey.chm"))
+              ;; (and (file-exists-p "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
+              ;;      "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
+              ;; (and (file-exists-p "c:/Program Files/AutoHotkey/AutoHotkey.chm")
+              ;;      "c:/Program Files/AutoHotkey/AutoHotkey.chm")
               (and (file-exists-p (concat ahk-path "/AutoHotkey.chm"))
                    (concat ahk-path "/AutoHotkey.chm")))))
     (if chm-path
-        (when acap (message "Opening help item for \"%s\"" acap)
+        (when name (message "Opening help item for \"%s\"" name)
               (w32-shell-execute 1 "hh.exe"
                                  (format
-                                  "ms-its:%s::/docs/commands/%s.htm"
-                                  chm-path acap)))
+                                  "ms-its:%s::/docs/lib/%s.htm"
+                                  chm-path name)))
       (message "Help file could not be found, set ahk-path variable."))))
 
 
