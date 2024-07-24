@@ -1,16 +1,17 @@
-;;; ahk-mode.el --- Major mode for editing AHK (AutoHotkey and AutoHotkey_L) -*- lexical-binding: t -*-
+;;; ahk-mode.el --- Major mode for editing AutoHotKey -*- lexical-binding: t -*-
 
-;; Copyright (C) 2015-2016 by Rich Alesi
+;; Copyright (C) conosuba~
 
-;; Author: Rich Alesi
-;; URL: https://github.com/ralesi/ahk-mode
-;; Version: 1.5.6
+;; Author: tu10ng
+;; URL: https://github.com/tu10ng/ahk-mode
+;; Version: 1.0.0
 ;; Keywords: ahk, AutoHotkey, hotkey, keyboard shortcut, automation
-;; Package-Requires: ((emacs "24.3"))
+;; Package-Requires: ((emacs "30.0"))
 
 ;; Based on work from
 ;; xahk-mode - Author:   Xah Lee ( http://xahlee.org/ ) - 2012
 ;; ahk-mode - Author:   Robert Widhopf-Fenk
+;; ahk-mode - Author:   Rich Alesi (https://github.com/ralesi/ahk-mode)
 
 ;; This file is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -26,92 +27,15 @@
 
 ;;; Commentary:
 
-;; A major mode for editing AutoHotkey (AHK) script.  Supports commenting,
-;; indentation, syntax highlighting, and help lookup both localling and on
-;; the web.
-
-;;; INSTALL
-
-;; Open the file, then type “M-x eval-buffer”.  You are done.  Open
-;; any ahk script, then type “M-x ahk-mode”, you'll see the
-;; source code syntax colored.
-
-;; To have Emacs automatically load the file when it restarts, and
-;; automatically use the mode when opening files ending in “.ahk”, do this:
-
-;; This package is located within Melpa.  To install, add
-;; ("melpa" . "http://melpa.org/packages/") to package-archives and
-;; execute "M-x package-install RET ahk-mode RET".
-
-;;; FEATURES
-
-;; When opening a script file you will get:
-;; - syntax highlighting
-;; - Commenting - provide functions for block and standard commenting
-;; - Imenu - jump to a function / label within a buffer
-;; - Execute scripts
-;; - Auto complete - adds options for `company-mode' and `auto-complete-mode'
-
-;; TODO:
-;; - smart identification of ahk_l and ahk - use chm file
-;; - Indentation - indent based on current style
-;; - Lookup reference - both on the web and through the installed CHM file
-;; - Execute scripts - support redirects of error to stdout
-;; - Debugging features - work with dgdb.ahk
-;; - add yasnippet support
-
-;; Notes on indentation
-;; Indentation is styled with bracing on current line of if / else statements
-;; or on empty next line.
-
-;; Block types that can affect indentation
-;; comments - ; AAA
-;; - previous block beginning brace = +0
-;; - indentation level is skipped when determining position for current line
-;; function - AAA(.*) { .\n. } = +1
-;; function - AAA(.*) { } = +0
-;; label - AAA: = 0
-;; Keybindings (next line) AAA:: = +1
-;; Keybindings (current line) AAA:: =+0
-;; Open block - {( +1 on next
-;; Close block - {( -1 on current
-;; Class AAA.* { ... } = +1
-;; #if block open - #[iI]f[^ \n]* (.*) = +1
-;; #if block close - #[iI]f[^ \n]*$ = -1
-;; return block - [Rr]eturn = -1
-;; for .*\n { .. } = +1
-;; loop .*\n { .. } = +1
-;; open assignment - .*operator-regexp$ = +1
-
-;; existing issues :
-
-;; paren broken across multiple lines
-;; DllCall("SetWindowPos", "uint", Window%PrevRowText%, "uint", Window%PPrevRowText%
-;;         , "int", 0, "int", 0, "int", 0, "int", 0
-;;           , "uint", 0x13)  ; NOSIZE|NOMOVE|NOACTIVATE (0x1|0x2|0x10)
-
-
-;;; HISTORY
-
-;; version 1.5.2, 2015-03-07 improved auto complete to work with ac and company-mode
-;; version 1.5.3, 2015-04-05 improved commenting and added imenu options
-;; version 1.5.4, 2015-04-06 indentation is working, with bugs
-;; version 1.5.5, 2015-07-20 added load website
-;; version 1.5.6, 2016-03-20 execute script works
+;; A major mode for editing AutoHotkey (AHK) script.  You should use this mode with eglot/lsp-mode and ahk2-lsp.
 
 ;;; Code:
 
 ;;; Requirements
 
-(require 'font-lock)
 (require 'thingatpt)
 (require 'rx)
-
-;; add to auto-complete sources if ac is loaded
-(eval-after-load "auto-complete"
-  '(progn
-     (require 'auto-complete-config)
-     (add-to-list 'ac-modes 'ahk-mode)))
+(require 'smie)
 
 ;;; Customization
 (defgroup ahk nil
@@ -124,9 +48,6 @@
   "Custom path for AutoHotkey executable and related files."
   :type 'string)
 
-(defvar ahk-debug nil
-  "Allows additional output when set to non-nil.")
-
 
 ;;; Bindings
 
@@ -135,7 +56,7 @@
     ;; key bindings
     (define-key map (kbd "C-c C-?") #'ahk-lookup-web)
     (define-key map (kbd "C-c C-r") #'ahk-lookup-chm)
-    (define-key map (kbd "C-c C-k") #'ahk-run-script)
+    (define-key map (kbd "C-c C-c") #'ahk-run-script)
     (easy-menu-define ahk-menu map "AHK Mode menu"
       '("AHK"
         ["Lookup webdocs on command" ahk-lookup-web]
@@ -147,6 +68,8 @@
 
 
 ;;; Font-lock and syntax
+
+;; TODO: call `SetTimer' at colomn 0 will be recognized as new function definition
 
 (defvar ahk-commands
   '("Abort" "AboveNormal" "Add" "All" "Alnum" "Alpha" "AltSubmit" "AlwaysOnTop" "And" "Asc" "AutoSize" "AutoTrim" "Background" "BackgroundTrans" "BelowNormal" "Between" "BitAnd" "BitNot" "BitOr" "BitShiftLeft" "BitShiftRight" "BitXOr" "BlockInput" "Border" "Bottom" "Break" "Button" "Buttons" "ByRef" "Cancel" "Capacity" "Caption" "Catch" "Ceil" "Center" "Check" "Check3" "Checkbox" "Checked" "CheckedGray" "Checks" "Choose" "ChooseString" "Chr" "Click" "ClipWait" "Close" "Color" "ComboBox" "Contains" "Continue" "Control" "ControlClick" "ControlFocus" "ControlGet" "ControlGetFocus" "ControlGetPos" "ControlGetText" "ControlList" "ControlMove" "ControlSend" "ControlSendRaw" "ControlSetText" "CoordMode" "Count" "Critical" "DDL" "Date" "DateTime" "Days" "Default" "Delete" "DeleteAll" "Delimiter" "Deref" "Destroy" "DetectHiddenText" "DetectHiddenWindows" "Digit" "Disable" "Disabled" "Displays" "Drive" "DriveGet" "DriveSpaceFree" "DropDownList" "Edit" "Eject" "Else" "Enable" "Enabled" "EnvAdd" "EnvDiv" "EnvGet" "EnvMult" "EnvSet" "EnvSub" "EnvUpdate" "Error" "ExStyle" "Exist" "Exit" "ExitApp" "Exp" "Expand" "FileAppend" "FileCopy" "FileCopyDir" "FileCreateDir" "FileCreateShortcut" "FileDelete" "FileEncoding" "FileGetAttrib" "FileGetShortcut" "FileGetSize" "FileGetTime" "FileGetVersion" "FileInstall" "FileMove" "FileMoveDir" "FileOpen" "FileRead" "FileReadLine" "FileRecycle" "FileRecycleEmpty" "FileRemoveDir" "FileSelectFile" "FileSelectFolder" "FileSetAttrib" "FileSetTime" "FileSystem" "Finally" "First" "Flash" "Float" "FloatFast" "Floor" "Focus" "Font" "For" "Format" "FormatTime" "GetKeyState" "Gosub" "Goto" "Grid" "Group" "GroupActivate" "GroupAdd" "GroupBox" "GroupClose" "GroupDeactivate" "Gui" "GuiClose" "GuiContextMenu" "GuiControl" "GuiControlGet" "GuiDropFiles" "GuiEscape" "GuiSize" "HKCC" "HKCR" "HKCU" "HKEY_CLASSES_ROOT" "HKEY_CURRENT_CONFIG" "HKEY_CURRENT_USER" "HKEY_LOCAL_MACHINE" "HKEY_USERS" "HKLM" "HKU" "HScroll" "Hdr" "Hidden" "Hide" "High" "Hotkey" "Hours" "ID" "IDLast" "Icon" "IconSmall" "If" "IfEqual" "IfExist" "IfGreater" "IfGreaterOrEqual" "IfInString" "IfLess" "IfLessOrEqual" "IfMsgBox" "IfNotEqual" "IfWinActive" "IfWinExist" "IfWinNotActive" "IfWinNotExist" "Ignore" "ImageList" "ImageSearch" "In" "IniDelete" "IniRead" "IniWrite" "Input" "InputBox" "Integer" "IntegerFast" "Interrupt" "Is" "Join" "KeyHistory" "KeyWait" "LTrim" "Label" "LastFound" "LastFoundExist" "Left" "Limit" "Lines" "List" "ListBox" "ListHotkeys" "ListLines" "ListVars" "ListView" "Ln" "Lock" "Log" "Logoff" "Loop" "Low" "Lower" "Lowercase" "MainWindow" "Margin" "MaxSize" "Maximize" "MaximizeBox" "Menu" "MinMax" "MinSize" "Minimize" "MinimizeBox" "Minutes" "Mod" "MonthCal" "Mouse" "MouseClick" "MouseClickDrag" "MouseGetPos" "MouseMove" "Move" "MsgBox" "Multi" "NA" "No" "NoActivate" "NoDefault" "NoHide" "NoIcon" "NoMainWindow" "NoSort" "NoSortHdr" "NoStandard" "NoTab" "NoTimers" "Normal" "Not" "Number" "Off" "Ok" "On" "OnExit" "Or" "OutputDebug" "OwnDialogs" "Owner" "Parse" "Password" "Pause" "Pic" "Picture" "Pixel" "PixelGetColor" "PixelSearch" "Pos" "PostMessage" "Pow" "Priority" "Process" "ProcessName" "Progress" "REG_BINARY" "REG_DWORD" "REG_EXPAND_SZ" "REG_MULTI_SZ" "REG_SZ" "RGB" "RTrim" "Radio" "Random" "Range" "Read" "ReadOnly" "Realtime" "Redraw" "RegDelete" "RegRead" "RegWrite" "Region" "Relative" "Reload" "Rename" "Report" "Resize" "Restore" "Retry" "Return" "Right" "Round" "Run" "RunAs" "RunWait" "Screen" "Seconds" "Section" "See" "Send" "SendInput" "SendLevel" "SendMessage" "SendMode" "SendPlay" "SendRaw" "Serial" "SetBatchLines" "SetCapslockState" "SetControlDelay" "SetDefaultMouseSpeed" "SetEnv" "SetFormat" "SetKeyDelay" "SetLabel" "SetMouseDelay" "SetNumlockState" "SetRegView" "SetScrollLockState" "SetStoreCapslockMode" "SetTimer" "SetTitleMatchMode" "SetWinDelay" "SetWorkingDir" "ShiftAltTab" "Show" "Shutdown" "Sin" "Single" "Sleep" "Slider" "Sort" "SortDesc" "SoundBeep" "SoundGet" "SoundGetWaveVolume" "SoundPlay" "SoundSet" "SoundSetWaveVolume" "SplashImage" "SplashTextOff" "SplashTextOn" "SplitPath" "Sqrt" "Standard" "Status" "StatusBar" "StatusBarGetText" "StatusBarWait" "StatusCD" "StringCaseSense" "StringGetPos" "StringLeft" "StringLen" "StringLower" "StringMid" "StringReplace" "StringRight" "StringSplit" "StringTrimLeft" "StringTrimRight" "StringUpper" "Style" "Submit" "Suspend" "SysGet" "SysMenu" "Tab" "Tab2" "TabStop" "Tan" "Text" "Theme" "Thread" "Throw" "Tile" "Time" "Tip" "ToggleCheck" "ToggleEnable" "ToolTip" "ToolWindow" "Top" "Topmost" "TransColor" "Transform" "Transparent" "Tray" "TrayTip" "TreeView" "Trim" "Try" "TryAgain" "Type" "UnCheck" "Unicode" "Unlock" "Until" "UpDown" "Upper" "Uppercase" "UrlDownloadToFile" "UseErrorLevel" "VScroll" "Var" "Vis" "VisFirst" "Visible" "Wait" "WaitClose" "WantCtrlA" "WantF2" "WantReturn" "While" "WinActivate" "WinActivateBottom" "WinClose" "WinGet" "WinGetActiveStats" "WinGetActiveTitle" "WinGetClass" "WinGetPos" "WinGetText" "WinGetTitle" "WinHide" "WinKill" "WinMaximize" "WinMenuSelectItem" "WinMinimize" "WinMinimizeAll" "WinMinimizeAllUndo" "WinMove" "WinRestore" "WinSet" "WinSetTitle" "WinShow" "WinWait" "WinWaitActive" "WinWaitClose" "WinWaitNotActive" "Wrap" "Xdigit" "Yes" "ahk_class" "ahk_group" "ahk_id" "ahk_pid" "bold" "global" "italic" "local" "norm" "static" "strike" "underline" "xm" "xp" "xs" "ym" "yp" "ys")
@@ -213,13 +136,13 @@
     
     ;; variables
     ("%[^% ]+%" . font-lock-variable-name-face)
-    (,ahk-commands-regexp . font-lock-keyword-face)
-    (,ahk-functions-regexp . font-lock-function-name-face)
+    (,ahk-commands-regexp . font-lock-builtin-face)
+    (,ahk-functions-regexp . font-lock-builtin-face)
     (,ahk-directives-regexp . font-lock-preprocessor-face)
     (,ahk-variables-regexp . font-lock-variable-name-face)
     (,ahk-keys-regexp . font-lock-constant-face)
-    (,ahk-operator-words-regexp . font-lock-builtin-face)
-    (,ahk-operators-regexp . font-lock-builtin-face)
+    (,ahk-operator-words-regexp . font-lock-keyword-face)
+    (,ahk-operators-regexp . font-lock-operator-face)
     ;; note: order matters
     ))
 
@@ -242,228 +165,9 @@
     syntax-table)
   "Syntax table for `ahk-mode'.")
 
-(defun ahk-font-lock-extend-region ()
-  "Extend the search region to include an entire block of text."
-  ;; Avoid compiler warnings about these global variables from font-lock.el.
-  ;; See the documentation for variable `font-lock-extend-region-functions'.
-  
-  ;; (set (make-local-variable 'font-lock-multiline) t)
-  ;; (add-hook 'font-lock-extend-region-functions
-  ;;           'ahk-font-lock-extend-region)
-
-  ;; clear memory
-  ;; (setq ahk-commands-regexp nil)
-  ;; (setq ahk-functions-regexp nil)
-  ;; (setq ahk-variables-regexp nil)
-  ;; (setq ahk-keys-regexp nil)
-
-  (eval-when-compile (defvar font-lock-beg) (defvar font-lock-end))
-  (save-excursion
-    (goto-char font-lock-beg)
-    (let ((found (or (re-search-backward "(LTrim0" nil t) (point-min))))
-      (goto-char font-lock-end)
-      (when (re-search-forward "\n)" nil t)
-        (beginning-of-line)
-        (setq font-lock-end (point)))
-      (setq font-lock-beg found))))
-
 
 ;;; indentation
-
-(defcustom ahk-indentation-offset (or tab-width 2)
-  "The indentation level."
-  :type 'integer
-  :group 'ahk)
-
-(defun ahk-calc-indentation (str &optional offset)
-  "Calculate the current indentation level of argument"
-  (let ((i (* (or offset 0) ahk-indentation-offset)))
-    (while (string-match "\t" str)
-      (setq i (+ i tab-width)
-            str (replace-match "" nil t str)))
-    (setq i (+ i (length str)))
-    i))
-
-;; the follwing regexp is used to detect if a condition is a one line statement or not,
-;; i.e. it matches one line statements but should not match those where the THEN resp.
-;; ELSE body is on its own line ...
-(defvar ahk-one-line-if-regexp
-  (concat "^\\([ \t]*\\)" ;; this is used for indentation
-          "\\("
-          "If\\(Not\\)?\\("
-          (regexp-opt '("InString" "InStr"
-                        "Less" "Greater" "Equal"
-                        "LessOrEqual" "GreaterOrEqual"
-                        ))
-          "\\)[^,\n]*,[^,\n]*,[^,\n]*,"
-          "\\|"
-          "If\\(Not\\)?Exist[^,\n]*,[^,\n]*,"
-          "\\|"
-          "Else[ \t]+\\([^I\n][^f\n][^ \n]\\)"
-          "\\)"))
-
-(defun ahk-previous-indent ()
-  "Return the indentation level of the previous non-blank line."
-  (save-excursion
-    (forward-line -1)
-    (while (and (looking-at "^[ \t]*$") (not (bobp)))
-      (forward-line -1))
-    (current-indentation)))
-
-(defun ahk-indent-line ()
-  "Indent the current line."
-  (interactive)
-  (let ((indent 0)
-        (opening-brace nil)
-        (else nil)
-        (label nil)
-        (closing-brace nil)
-        (loop nil)
-        (prev-single nil)
-        (return nil)
-        (empty-brace nil)
-        (block-skip nil)
-        (case-fold-search t))
-    ;; do a backward search to determine the indentation level
-    (save-excursion
-      (beginning-of-line)
-      ;; save type of current line
-      (setq opening-brace      (looking-at "^[ \t]*{[^}]"))
-      (setq opening-paren      (looking-at "^[ \t]*([^)]"))
-      (setq if-else            (looking-at "^[ \t]*\\([iI]f\\|[Ee]lse\\)"))
-      (setq loop               (looking-at "^[ \t]*\\([Ll]oop\\)[^{]+"))
-      (setq closing-brace      (looking-at "^[ \t]*\\([)}]\\|\\*\\/\\)"))  ; no "$" for the case of "} else {"
-      (setq label              (looking-at "^[ \t]*[^:\n ]+:$"))
-      (setq keybinding         (looking-at "^[ \t]*[^:\n ]+::\\(.*\\)$"))
-      (setq return             (looking-at "^\\([ \t]*\\)[rR]eturn"))
-      (setq blank              (looking-at "^\\([ \t]*\\)\n"))
-      ;; skip previous empty lines and commented lines
-      (setq indent (ahk-previous-indent))
-      (setq prev (ahk-previous-indent))
-      (save-excursion
-        (when closing-brace
-          (progn
-            (beginning-of-line)
-            (re-search-forward "\\(}\\|)\\)" nil t)
-            (backward-list)
-            (setq block-skip t)
-            (setq indent (current-indentation))
-            )
-          )
-        )
-      (forward-line -1)
-      (while (and
-              (or (looking-at "^[ \t]*$") (looking-at "^;"))
-              (not (bobp)))
-        (forward-line -1))
-      ;; we are now at the previous non-empty /non comment line
-      (beginning-of-line)
-      ;; default to previous indentation
-      (cond
-       (block-skip
-        nil)
-       (blank
-        (setq indent 0))
-       (closing-brace
-        (setq indent (- indent ahk-indentation-offset)))
-       ;; if beginning with a comment, take its indentation
-       ((looking-at "^\\([ \t]*\\);")
-        nil)
-       ;; keybindings
-       ((and (looking-at "^[ \t]*[^:\n ]+:$")
-             (not label))
-        (setq indent (+ indent ahk-indentation-offset)))
-       ;; return
-       ((looking-at "^\\([ \t]*\\)[rR]eturn")
-        (setq indent (- indent ahk-indentation-offset)))
-       ;; label
-       (label
-        (setq indent 0))
-       ((and
-         (not opening-brace)
-         (not block-skip)
-         (looking-at "^[^: \n]+:$")
-         (looking-at "^[^:\n]+:\\([^:\n]*\\)?[ 	]*$"))
-        (setq indent (+ indent ahk-indentation-offset)))
-       ;; opening brace
-       ((looking-at "^\\([ \t]*\\)[{(]$")
-        (and
-         (setq empty-brace t)
-         (setq indent (+ indent ahk-indentation-offset))))
-       ;; brace at end of line
-       ((or
-         (looking-at "^\\([ \t]*\\).*[{][^}]*$")
-         (looking-at "^\\([ \t]*\\).*[(][^)]*$"))
-        (setq indent (+ indent ahk-indentation-offset)))
-       ;; If/Else with body on next line, but not opening { or (
-       ((and (not opening-brace)
-             (not block-skip)
-             ;; (or if-else loop)
-             (or
-              (looking-at "^[ \t]*\\([Ll]oop\\)[^{=]*\n")
-              (looking-at "^\\([ \t]*\\)\\([iI]f\\|[eE]lse\\)[^{]*\n"))
-             )
-        (and
-         (setq prev-single t)
-         (setq indent (+ indent ahk-indentation-offset))))
-       ((looking-at "^[ \t]*,[^\n]+[}]$")  ; last line of a multi-line list
-        (setq indent (- indent ahk-indentation-offset)))
-
-       ;; (return
-       ;;  (setq indent (- indent ahk-indentation-offset)))
-       ;; subtract indentation if closing bracket only
-       ;; ((looking-at "^[ \t]*[})]")
-       ;;  (setq indent (- indent ahk-indentation-offset)))
-       ;; zero indentation when at label or keybinding
-       ((or (looking-at "^[ \t]*[^,: \t\n]*:$")
-            (looking-at "^;;;"))
-        (setq indent 0)))
-      ;; check for single line if/else
-      (forward-line -1)
-      (when (and
-             (not block-skip)
-             (not empty-brace)
-             (or
-              (looking-at "^[ \t]*\\([Ll]oop\\)[^{]+\n")
-              (looking-at "^\\([ \t]*\\)\\([iI]f\\|[eE]lse\\)[^{]+\n")))
-        ;; adjust when stacking multiple single line commands
-        (setq indent (- indent (if prev-single (- (* 2 ahk-indentation-offset)) 0) ahk-indentation-offset)))
-      )
-    ;; set negative indentation to 0
-    (save-excursion
-      (beginning-of-line)
-      (if (< indent 0)
-          (setq indent 0))
-      ;; actual indentation performed here
-      (if (looking-at "^[ \t]+")
-          (replace-match ""))
-      (indent-to indent))
-    (when ahk-debug
-      (message (format
-                "indent: %s, current: %s previous: %s
-ob: %s, op: %s, cb: %s, bs: %s,
-if-else: %s, l: %s, kb: %s, ret: %s, bl: %s"
-                indent
-                (current-indentation)
-                (ahk-previous-indent)
-                opening-brace
-                opening-paren
-                closing-brace
-                block-skip
-                if-else
-                label
-                keybinding
-                return
-                blank
-                )))))
-
-(defun ahk-indent-region (start end)
-  (interactive "r")
-  (save-excursion
-    (goto-char start)
-    (while (and (not (eobp)) (< (point) end))
-      (ahk-indent-line)
-      (forward-line 1))))
+;; depends on `smie' (Simple Minded Indentation Engine)
 
 
 ;;; imenu support
@@ -477,6 +181,8 @@ if-else: %s, l: %s, kb: %s, ret: %s, bl: %s"
 
 
 ;;; Navigation
+
+;; TODO
 
 
 ;;; Action
@@ -529,79 +235,11 @@ Finds the command in the internal AutoHotkey documentation."
       (message "Help file could not be found, set ahk-path variable."))))
 
 
-;; Symbol completion
-
-(defvar ahk-kwd-list (make-hash-table :test 'equal)
-  "AHK keywords.")
-
-(defvar ahk-all-keywords (append ahk-commands ahk-functions ahk-variables)
-  "List of all ahk keywords.")
-
-(mapc (lambda (x) (puthash x t ahk-kwd-list)) ahk-commands)
-(mapc (lambda (x) (puthash x t ahk-kwd-list)) ahk-functions)
-(mapc (lambda (x) (puthash x t ahk-kwd-list)) ahk-directives)
-(mapc (lambda (x) (puthash x t ahk-kwd-list)) ahk-variables)
-(mapc (lambda (x) (puthash x t ahk-kwd-list)) ahk-keys)
-(put 'ahk-kwd-list 'risky-local-variable t)
-
-(defun ahk-completion-at-point ()
-  "Complete the current work using the list of all syntax's."
-  (interactive)
-  (let ((pt (point)))
-    (if (and (or (save-excursion (re-search-backward "\\<\\w+"))
-                 (looking-at "\\<\\w+"))
-             (= (match-end 0) pt))
-        (let ((start (match-beginning 0))
-              (prefix (match-string 0))
-              (completion-ignore-case t)
-              completions)
-          (list start pt (all-completions prefix ahk-all-keywords) :exclusive 'no :annotation-function 'ahk-company-annotation)))))
-
-(defun ahk-company-annotation (candidate)
-  "Annotate company mode completions based on source."
-  (cond
-   ((member candidate ahk-commands)
-    "c")
-   ((member candidate ahk-functions)
-    "f")
-   ((member candidate ahk-variables)
-    "v")
-   ((member candidate ahk-directives)
-    "d")
-   ((member candidate ahk-keys)
-    "k")
-   (t "")))
-
-(defvar ac-source-ahk
-  '((candidates . (all-completions ac-prefix ahk-all-keywords))
-    (limit . nil)
-    (symbol . "f"))
-  "Completion for AHK mode")
-
-(defvar ac-source-keys-ahk
-  '((candidates . (all-completions ac-prefix ahk-keys))
-    (limit . nil)
-    (symbol . "k"))
-  "Completion for AHK keys mode")
-
-(defvar ac-source-directives-ahk
-  '((candidates . (all-completions ac-prefix ahk-directives))
-    (limit . nil)
-    (symbol . "d"))
-  "Completion for AHK directives mode")
+;;; Symbol completion
+;; depends on ahk2-lsp
 
 
 ;;; Utility functions
-
-(defun ahk-ltrim-blocks ()
-  "Match JavaScript blocks from the point to LAST."
-  (cond ((re-search-backward "(LTrim0" nil t)
-         (let ((beg (match-beginning 0)))
-           (cond ((re-search-forward "\n)" nil t)
-                  (set-match-data (list beg (point)))
-                  t)
-                 (t nil))))
-        (t nil)))
 
 
 ;;; Major mode
@@ -615,16 +253,16 @@ Finds the command in the internal AutoHotkey documentation."
   (setq-local comment-start "; ")
   (setq-local comment-start-skip ";+ *")
 
-  (setq-local block-comment-start     "/*")
-  (setq-local block-comment-end       "*/")
-  (setq-local block-comment-left      " * ")
-  (setq-local block-comment-right     " *")
+  (setq-local block-comment-start "/*")
+  (setq-local block-comment-end "*/")
+  (setq-local block-comment-left " * ")
+  (setq-local block-comment-right " *")
   (setq-local block-comment-top-right "")
-  (setq-local block-comment-bot-left  " ")
-  (setq-local block-comment-char      ?*)
+  (setq-local block-comment-bot-left " ")
+  (setq-local block-comment-char ?*)
 
-  (setq-local indent-line-function 'ahk-indent-line)
-  (setq-local indent-region-function 'ahk-indent-region)
+  ;; TODO: comment indentation is not correct
+  (smie-setup nil #'ignore)
 
   (setq-local parse-sexp-ignore-comments t)
   (setq-local parse-sexp-lookup-properties t)
@@ -635,31 +273,13 @@ Finds the command in the internal AutoHotkey documentation."
 
   ;; TODO: beginning-of-defun
 
-  (add-hook 'completion-at-point-functions 'ahk-completion-at-point nil t)
-
-  (eval-after-load "auto-complete"
-    '(when (listp 'ac-sources)
-       (progn
-         (make-local-variable 'ac-sources)
-         (add-to-list 'ac-sources  'ac-source-ahk)
-         (add-to-list 'ac-sources  'ac-source-directives-ahk)
-         (add-to-list 'ac-sources  'ac-source-keys-ahk))))
-
   (setq-local font-lock-defaults `(,ahk-font-lock-keywords
                                    nil nil))
+
   (setq-local imenu-generic-expression ahk-imenu-generic-expression)
   (setq-local imenu-sort-function 'imenu--sort-by-position)
   
   (add-to-list 'auto-mode-alist '("\\.ahk\\'" . ahk-mode)))
-
-(when ahk-debug
-  (mapc (lambda (buffer)
-          (with-current-buffer buffer
-            (when (eq major-mode 'ahk-mode)
-              (message "%s" buffer)
-              (font-lock-mode -1)
-              (ahk-mode))))
-        (buffer-list)))
 
 ;; TODO change ^!# into C- M- S-
 
