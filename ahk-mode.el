@@ -52,6 +52,17 @@
   :link '(url-link :tag "Github" "https://github.com/tu10ng/ahk-mode")
   :link '(emacs-commentary-link :tag "Commentary" "ahk"))
 
+(defcustom ahk-indent-offset 4
+  "indentation offset."
+  :type 'integer
+  :group 'ahk
+  :safe #'integerp)
+
+(defcustom ahk-electric-indent-chars  '(?})
+  "this will append to electric-indent-chars."
+  :type 'list
+  :group 'ahk)
+
 (defcustom ahk-chm-path ""
   "Custom path for AutoHotKey chm help file.
 `ahk-mode' will try to find chm file by searching common install path.
@@ -214,12 +225,6 @@ if the search failed, user can specify the path to chm file manually."
 (defun ahk-in-str-or-cmnt () (nth 8 (syntax-ppss)))
 (defun ahk-rewind-past-str-cmnt () (goto-char (nth 8 (syntax-ppss))))
 
-(defcustom ahk-indent-offset 4
-  ""
-  :type 'integer
-  :group 'ahk
-  :safe #'integerp)
-
 (defun ahk-looking-back-str (str)
   "Return non-nil if there's a match on the text before point and STR.
 Like `looking-back' but for fixed strings rather than regexps (so
@@ -244,8 +249,6 @@ that it's not so slow)."
   "Indent current line.
 
 if user defines keybind like [::Send "", we can't correctly indent. "
-  (interactive)
-  "Indent current line for `ahk-mode'."
   (let ((indent
          (save-excursion
            (back-to-indentation)
@@ -272,8 +275,6 @@ if user defines keybind like [::Send "", we can't correctly indent. "
       (if (<= (current-column) (current-indentation))
           (indent-line-to indent)
         (save-excursion (indent-line-to indent))))))
-
-;; TODO electric indent
 
 
 ;;; imenu support
@@ -422,6 +423,9 @@ Finds the command in the internal AutoHotkey documentation."
   (setq-local paragraph-ignore-fill-prefix t)
   (setq-local imenu-generic-expression ahk-imenu-generic-expression)
   (setq-local imenu-sort-function 'imenu--sort-by-position)
+  (when (boundp 'electric-indent-chars)
+    (setq-local electric-indent-chars
+                (append electric-indent-chars ahk-electric-indent-chars)))
 
   (add-to-list 'auto-mode-alist '("\\.ahk\\'" . ahk-mode)))
 
