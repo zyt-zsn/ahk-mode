@@ -40,7 +40,6 @@
 (require 'font-lock)
 (require 'thingatpt)
 (require 'rx)
-(require 'smie)
 (require 'seq)
 
 
@@ -209,9 +208,72 @@ if the search failed, user can specify the path to chm file manually."
 
 
 ;;; indentation
-;; depends on `smie' (Simple Minded Indentation Engine)
 
-;; TODO
+(defun ahk-paren-level () (nth 0 (syntax-ppss)))
+(defun ahk-in-str () (nth 3 (syntax-ppss)))
+(defun ahk-in-str-or-cmnt () (nth 8 (syntax-ppss)))
+(defun ahk-rewind-past-str-cmnt () (goto-char (nth 8 (syntax-ppss))))
+
+(defcustom ahk-indent-offset 4
+  ""
+  :type 'integer
+  :group 'ahk
+  :safe #'integerp)
+
+(defun ahk-looking-back-str (str)
+  "Return non-nil if there's a match on the text before point and STR.
+Like `looking-back' but for fixed strings rather than regexps (so
+that it's not so slow)."
+  (let ((len (length str)))
+    (and (> (point) len)
+         (equal str (buffer-substring-no-properties (- (point) len) (point))))))
+
+(defun ahk-rewind-irrelevant ()
+  (let ((continue t))
+    (while continue
+      (let ((starting (point)))
+        (skip-chars-backward "[:space:]\n")
+        (when (ahk-looking-back-str "*/")
+          (backward-char))
+        (when (ahk-in-str-or-cmnt)
+          (ahk-rewind-past-str-cmnt))
+        ;; Rewind until the point no longer moves
+        (setq continue (/= starting (point)))))))
+
+(defun ahk-indent-line ()
+  "Indent current line.
+
+if user defines keybind like [::Send "", we can't correctly indent. "
+  (interactive)
+  "Indent current line for `ahk-mode'."
+  (let ((indent
+         (save-excursion
+           (back-to-indentation)
+           (let* ((level (ahk-paren-level))
+                  (baseline (* level ahk-indent-offset)))
+             (cond
+              ((looking-at "[]})]")
+               (- baseline ahk-indent-offset))
+              ((looking-at "*")         ; block comment
+               (1+ baseline))
+              ((and (not (looking-at "{")) ; not bracket if
+                    (save-excursion
+                      (ahk-rewind-irrelevant)
+                      (back-to-indentation)
+                      (when (looking-at "}")
+                        (forward-char))
+                      (and (looking-at (ahk-rx-to-string
+                                        '(seq (? punct) ws (symbol "if" "else"))))
+                           (= level (ahk-paren-level)))))
+               (+ baseline ahk-indent-offset))
+              (t
+               baseline))))))
+    (when indent
+      (if (<= (current-column) (current-indentation))
+          (indent-line-to indent)
+        (save-excursion (indent-line-to indent))))))
+
+;; TODO electric indent
 
 
 ;;; imenu support
@@ -344,8 +406,7 @@ Finds the command in the internal AutoHotkey documentation."
   (setq-local font-lock-defaults '(ahk-font-lock-keywords
                                    nil nil nil nil))
 
-  ;; TODO: comment indentation is not correct, second statement indentation is not correct
-  (smie-setup nil #'ignore)
+  (setq-local indent-line-function 'ahk-indent-line)
 
   (setq-local parse-sexp-ignore-comments t)
   (setq-local parse-sexp-lookup-properties t)
