@@ -1,46 +1,53 @@
 ;;; ahk-mode.el --- Major mode for editing AutoHotKey -*- lexical-binding: t -*-
 
-;; Copyright (C) conosuba~
-
 ;; Author: tu10ng
 ;; URL: https://github.com/tu10ng/ahk-mode
-;; Version: 1.0.0
-;; Keywords: ahk, AutoHotkey, hotkey, keyboard shortcut, automation
-;; Package-Requires: ((emacs "30.0"))
-
+;; Version: 20240725
+;; Package-Requires: ((emacs "29.0"))
+;;
 ;; Based on work from
 ;; xahk-mode - Author:   Xah Lee ( http://xahlee.org/ ) - 2012
 ;; ahk-mode - Author:   Robert Widhopf-Fenk
 ;; ahk-mode - Author:   Rich Alesi (https://github.com/ralesi/ahk-mode)
-
-;; This file is free software; you can redistribute it and/or modify
+;;
+;; This file is NOT part of Emacs.
+;;
+;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
-;; the Free Software Foundation; either version 3, or version 2.
-
-;; This file is distributed in the hope that it will be useful,
+;; the Free Software Foundation, either version 3 of the License, or
+;; (at your option) any later version.
+;;
+;; This program is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
+;;
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-;; For a full copy of the GNU General Public License
-;; see <http://www.gnu.org/licenses/>.
+;; Keywords: languages, tools
 
 ;;; Commentary:
 
-;; A major mode for editing AutoHotkey (AHK) script files.  You should use this mode with eglot/lsp-mode and ahk2-lsp.
+;; A major mode for editing AutoHotkey (AHK) script files.
+
+;; To enable symbol completion, make sure you have the ahk2-lsp
+;; program installed (available from github) and activate
+;; `company-mode' and `eglot'.
+
 
 ;;; Code:
-
-;;; Requirements
-
 (require 'font-lock)
 (require 'thingatpt)
 (require 'rx)
 (require 'smie)
 
+
 ;;; Customization
+
 (defgroup ahk nil
-  "Major mode for editing AutoHotkey script."
+  "Major mode for editing AutoHotkey script files."
+  :prefix "ahk-"
   :group 'languages
   :link '(url-link :tag "Github" "https://github.com/tu10ng/ahk-mode")
   :link '(emacs-commentary-link :tag "Commentary" "ahk"))
@@ -56,7 +63,7 @@
   (let ((map (make-sparse-keymap)))
     ;; key bindings
     (define-key map (kbd "C-c d") #'ahk-lookup-web)
-    (define-key map (kbd "C-c h") #'ahk-lookup-chm)
+    (define-key map (kbd "C-c f") #'ahk-lookup-chm)
     (define-key map (kbd "C-c C-c") #'ahk-run-script)
     (easy-menu-define ahk-menu map "AHK Mode menu"
       '("AHK"
@@ -68,7 +75,7 @@
   "Keymap for `ahk-mode'.")
 
 
-;;; ahk rx
+;;; rx-wrappers for ahk
 
 (defvar ahk--rx-bindings)
 
@@ -90,7 +97,8 @@
    
    (name (symbol (seq (+ (any alpha "_")) (* (any alnum "_")))))
    (funcname name)
-   (funcheader (seq bol (group-n 1 funcname) ws "(")) ; need "("?
+   (funcheader (seq bol (group-n 1 funcname) ws "(" (* nonl) ")" ws (? "\n") ws "{"))
+   (keybind-header (seq bol (group-n 1 (+ nonl)) ws "::"))
    (assignment-op ":=")
    (operator (or "%" "." "?" "++" "--" "**" "-" "!" "~" "&" "*" "/" "//" "+" "-" "<<" ">>" ">>>" "&" "^" "|" (seq ws+ "." ws+) "~=" ">" "<" ">=" "<=" "=" "==" "!=" "!==" "&&" "||" "??" "?:" ":=" "+=" "-=" "*=" "/=" "//=" ".=" "|=" "&=" "^=" ">>=" "<<=" ">>>=" "=>" ","))
    (declaration (symbol "class" "extends" "global" "local" "static"))
@@ -126,26 +134,21 @@
 
 (defvar ahk-keys-regexp (regexp-opt ahk-keys 'words))
 
-;; TODO "foo{bar}" bar color
 (defvar ahk-font-lock-keywords
-  `(;; key bindings
-    ("^\\([^\t\n:=]+\\)::" . (1 font-lock-constant-face))
+  `((,ahk-keys-regexp . font-lock-constant-face)
     
-    (,ahk-keys-regexp . font-lock-constant-face)
-    
-    ;; builtin
-    (,(ahk-rx (or builtin-variables builtin-functions))
+    (,(ahk-rx builtin-functions)
      . font-lock-builtin-face)
     
-    ;; keywords
+    (,(ahk-rx builtin-variables)
+     . font-lock-constant-face)
+    
     (,(ahk-rx (or keyword keyword-operator))
      . font-lock-keyword-face)
     
-    ;; directives
     (,(ahk-rx directives)
      . font-lock-preprocessor-face)
     
-    ;; declaration
     (,(ahk-rx declaration)
      . font-lock-type-face)
     
@@ -173,27 +176,28 @@
     
     (,(ahk-rx funcheader)
      (1 font-lock-function-name-face))
+    
+    (,(ahk-rx keybind-header)
+     (1 font-lock-function-name-face))
     ))
 
 (defvar ahk-mode-syntax-table
   (let ((syntax-table (make-syntax-table)))
     ;; comments
+    (modify-syntax-entry ?\;  "<" syntax-table)
+    (modify-syntax-entry ?\n ">"  syntax-table)
     (modify-syntax-entry ?\/  ". 14" syntax-table)
-    (modify-syntax-entry ?*  ". 23"   syntax-table)
+    (modify-syntax-entry ?*  ". 23b"   syntax-table)
     
     ;; string
     (modify-syntax-entry ?\' "\"")
     (modify-syntax-entry ?\" "\"")
     
-    ;; these are also allowed in variable names
-    (modify-syntax-entry ?#  "w" syntax-table)
-    (modify-syntax-entry ?_  "w" syntax-table)
-    (modify-syntax-entry ?@  "w" syntax-table)
-    ;; some additional characters used in paths and switches
-    (modify-syntax-entry ?\\  "w" syntax-table)
-    (modify-syntax-entry ?\;  "< b" syntax-table)
-    ;; New line
-    (modify-syntax-entry ?\n "> b"  syntax-table)
+    ;; symbol constituents
+    (modify-syntax-entry ?#  "_" syntax-table)
+    (modify-syntax-entry ?_  "_" syntax-table)
+    (modify-syntax-entry ?@  "_" syntax-table)
+    
     ;; ` is escape
     (modify-syntax-entry ?` "\\" syntax-table)
     syntax-table)
@@ -216,7 +220,49 @@
 
 ;;; Navigation
 
-;; TODO
+(defvar ahk--beginning-of-defun-re
+  (ahk-rx-to-string '(or funcheader keybind-header)))
+
+(defun ahk-beginning-of-defun (&optional arg)
+  "Move backward to the beginning of defun (or similar)."
+  (interactive "P")
+  (or arg (setq arg 1))
+
+  (while (and (> arg 0)
+              (re-search-backward ahk--beginning-of-defun-re nil t))
+    (setq arg (1- arg)))
+
+  (while (and (< arg 0)
+              (re-search-forward ahk--beginning-of-defun-re nil t))
+    (setq arg (1+ arg)))
+
+  (zerop arg))
+
+(defun ahk-end-of-defun (&optional arg)
+  "Move forward to the end of defun (or similar).
+
+This function just searches for a `}' at the beginning of a line."
+  (interactive "P")
+  (or arg (setq arg 1))
+  (let (found
+        (ret t))
+    (while (> arg 0)
+      (if (re-search-forward "^}" nil t)
+          (setq arg (1- arg)
+                found t)
+        (setq ret nil
+              arg 0)))
+    (while (< arg 0)
+      (if (re-search-backward "^}" nil t)
+          (setq arg (1+ arg)
+                found t)
+        (setq ret nil
+              arg 0)))
+    (if found
+        (progn
+          (beginning-of-line)
+          (forward-line)))
+    ret))
 
 
 ;;; Action
@@ -288,35 +334,27 @@ Finds the command in the internal AutoHotkey documentation."
 
 \\{ahk-mode-map}"
   :syntax-table ahk-mode-syntax-table
-  (setq-local comment-start "; ")
-  (setq-local comment-start-skip ";+ *")
-
-  (setq-local block-comment-start "/*")
-  (setq-local block-comment-end "*/")
-  (setq-local block-comment-left " * ")
-  (setq-local block-comment-right " *")
-  (setq-local block-comment-top-right "")
-  (setq-local block-comment-bot-left " ")
-  (setq-local block-comment-char ?*)
+  (setq-local font-lock-defaults '(ahk-font-lock-keywords
+                                   nil nil nil nil))
 
   ;; TODO: comment indentation is not correct, second statement indentation is not correct
   (smie-setup nil #'ignore)
 
   (setq-local parse-sexp-ignore-comments t)
   (setq-local parse-sexp-lookup-properties t)
-  
+  (setq-local beginning-of-defun-function 'ahk-beginning-of-defun)
+  (setq-local end-of-defun-function 'ahk-end-of-defun)
+  (setq-local comment-start ";")
+  (setq-local comment-start-skip ";+ *")
+  (setq-local block-comment-start "/*")
+  (setq-local block-comment-end "*/")
+  (setq-local comment-use-syntax t)
   (setq-local paragraph-start (concat "$\\|" page-delimiter))
   (setq-local paragraph-separate paragraph-start)
   (setq-local paragraph-ignore-fill-prefix t)
-
-  ;; TODO: beginning-of-defun
-
-  (setq-local font-lock-defaults '(ahk-font-lock-keywords
-                                   nil nil nil nil))
-
   (setq-local imenu-generic-expression ahk-imenu-generic-expression)
   (setq-local imenu-sort-function 'imenu--sort-by-position)
-  
+
   (add-to-list 'auto-mode-alist '("\\.ahk\\'" . ahk-mode)))
 
 ;; TODO change ^!# into C- M- S-
