@@ -41,6 +41,7 @@
 (require 'thingatpt)
 (require 'rx)
 (require 'smie)
+(require 'seq)
 
 
 ;;; Customization
@@ -52,8 +53,10 @@
   :link '(url-link :tag "Github" "https://github.com/tu10ng/ahk-mode")
   :link '(emacs-commentary-link :tag "Commentary" "ahk"))
 
-(defcustom ahk-path ""
-  "Custom path for AutoHotkey executable and related files."
+(defcustom ahk-chm-path ""
+  "Custom path for AutoHotKey chm help file.
+`ahk-mode' will try to find chm file by searching common install path.
+if the search failed, user can specify the path to chm file manually."
   :type 'string)
 
 
@@ -77,6 +80,7 @@
 
 ;;; rx-wrappers for ahk
 
+;; TODO: does this need compile?
 (defvar ahk--rx-bindings)
 
 ;; methods was dumped from https://www.autohotkey.com/docs/v2/Language.htm, on `index' page, click `filter' then use inspect to copy element out then use keyboard macro:
@@ -207,6 +211,8 @@
 ;;; indentation
 ;; depends on `smie' (Simple Minded Indentation Engine)
 
+;; TODO
+
 
 ;;; imenu support
 (defconst ahk-imenu-generic-expression
@@ -287,36 +293,37 @@ This function just searches for a `}' at the beginning of a line."
     command))
 
 (defun ahk-lookup-web ()
-  "Look up current word in AutoHotkey's reference doc.
+  "Look up current symbol in AutoHotkey's reference doc.
 Launches default browser and opens the doc's url."
   (interactive)
   (let* ((name (ahk-symbol-at-point))
-         (name (string-replace "#" "_" name))
+         (name (string-replace "#" "_" name)) ; for directive
          (url (concat "https://www.autohotkey.com/docs/v2/lib/" name ".htm")))
     (browse-url url)))
 
 (defun ahk-lookup-chm ()
-  "Look up current word in AutoHotkey's reference doc.
+  "Look up current symbol in AutoHotkey's reference doc.
 Finds the command in the internal AutoHotkey documentation."
   (interactive)
   (let* ((name (ahk-symbol-at-point))
-         (name (string-replace "#" "_" name))
+         (name (string-replace "#" "_" name)) ; for directive
          (chm-path
-          (or (and (file-exists-p "~/scoop/apps/autohotkey/current/v2/AutoHotkey.chm")
-                   (file-truename "~/scoop/apps/autohotkey/current/v2/AutoHotkey.chm"))
-              ;; (and (file-exists-p "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
-              ;;      "c:/Program Files (x86)/AutoHotkey/AutoHotkey.chm")
-              ;; (and (file-exists-p "c:/Program Files/AutoHotkey/AutoHotkey.chm")
-              ;;      "c:/Program Files/AutoHotkey/AutoHotkey.chm")
-              (and (file-exists-p (concat ahk-path "/AutoHotkey.chm"))
-                   (concat ahk-path "/AutoHotkey.chm")))))
+          (seq-some (lambda (path)
+                      (when (file-exists-p path)
+                        (file-truename path)))
+                    '("~/scoop/apps/autohotkey/current/v2/AutoHotkey.chm"
+                      "~/appdata/local/programs/autohotkey/v2/AutoHotkey.chm"
+                      "c:/Program Files/AutoHotkey/v2/AutoHotkey.chm"
+                      "c:/Program Files (x86)/AutoHotkey/v2/AutoHotkey.chm")))
+         (chm-path (or chm-path
+                       (file-truename ahk-chm-path))))
     (if chm-path
         (when name (message "Opening help item for \"%s\"" name)
               (w32-shell-execute 1 "hh.exe"
-                                 (format
-                                  "ms-its:%s::/docs/lib/%s.htm"
-                                  chm-path name)))
-      (message "Help file could not be found, set ahk-path variable."))))
+                                 (format "ms-its:%s::/docs/lib/%s.htm"
+                                         chm-path
+                                         name)))
+      (message "Help file could not be found, set ahk-chm-path variable."))))
 
 
 ;;; Symbol completion
