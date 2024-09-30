@@ -201,11 +201,11 @@ if the search failed, user can specify the path to chm file manually."
     (modify-syntax-entry ?\;  "<" syntax-table)
     (modify-syntax-entry ?\n ">"  syntax-table)
     (modify-syntax-entry ?\/  ". 14" syntax-table)
-    (modify-syntax-entry ?*  ". 23b"   syntax-table)
+    (modify-syntax-entry ?*  ". 23b" syntax-table)
     
     ;; string
-    (modify-syntax-entry ?\' "\"")
-    (modify-syntax-entry ?\" "\"")
+    (modify-syntax-entry ?\' "\"" syntax-table)
+    (modify-syntax-entry ?\" "\"" syntax-table)
     
     ;; symbol constituents
     (modify-syntax-entry ?#  "_" syntax-table)
