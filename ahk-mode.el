@@ -37,6 +37,7 @@
 
 
 ;;; Code:
+(require 'lsp-mode)
 (require 'font-lock)
 (require 'thingatpt)
 (require 'rx)
@@ -247,8 +248,7 @@ that it's not so slow)."
 
 (defun ahk-indent-line ()
   "Indent current line.
-
-if user defines keybind like [::Send "", we can't correctly indent. "
+if user defines keybind like [::Send \"\", we can't correctly indent. "
   (let ((indent
          (save-excursion
            (back-to-indentation)
@@ -369,24 +369,79 @@ Launches default browser and opens the doc's url."
 Finds the command in the internal AutoHotkey documentation."
   (interactive)
   (let* ((name (ahk-symbol-at-point))
-         (name (string-replace "#" "_" name)) ; for directive
-         (chm-path
-          (seq-some (lambda (path)
-                      (when (file-exists-p path)
-                        (file-truename path)))
-                    '("~/scoop/apps/autohotkey/current/v2/AutoHotkey.chm"
-                      "~/appdata/local/programs/autohotkey/v2/AutoHotkey.chm"
-                      "c:/Program Files/AutoHotkey/v2/AutoHotkey.chm"
-                      "c:/Program Files (x86)/AutoHotkey/v2/AutoHotkey.chm")))
-         (chm-path (or chm-path
-                       (file-truename ahk-chm-path))))
-    (if chm-path
-        (when name (message "Opening help item for \"%s\"" name)
-              (w32-shell-execute 1 "hh.exe"
-                                 (format "ms-its:%s::/docs/lib/%s.htm"
-                                         chm-path
-                                         name)))
-      (message "Help file could not be found, set ahk-chm-path variable."))))
+		 (name (string-replace "#" "_" name)) ; for directive
+		 (paths
+		  (if (and (boundp 'ahk-v1) ahk-v1)
+			  (list "~/scoop/apps/autohotkey/current/v1.1.37.02/AutoHotkey.chm"
+					"~/appdata/local/programs/autohotkey/v1.1.37.02/AutoHotkey.chm"
+					"c:/Program Files/AutoHotkey/v1.1.37.02/AutoHotkey.chm"
+					"c:/Program Files (x86)/AutoHotkey/v1.1.37.02/AutoHotkey.chm"
+					)
+			(list "~/scoop/apps/autohotkey/current/v2/AutoHotkey.chm"
+				  "~/appdata/local/programs/autohotkey/v2/AutoHotkey.chm"
+				  "c:/Program Files/AutoHotkey/v2/AutoHotkey.chm"
+				  "c:/Program Files (x86)/AutoHotkey/v2/AutoHotkey.chm"
+				  )
+			)
+		  )
+		 (chm-path
+		  (seq-some (lambda (path)
+					  (when (file-exists-p path)
+						(file-truename path)))
+					paths
+					))
+		 (chm-path (or chm-path
+					   (file-truename ahk-chm-path))))
+	(if chm-path
+		(when name (message "Opening help item for \"%s\"" name)
+			  (w32-shell-execute 1 "KeyHH.exe"
+								 (format "-ID-%s %s::/docs/lib/%s.htm"
+										 (md5 chm-path) chm-path
+										 name))
+			  (message (concat "KeyHH.exe "  (format "-ID-%s %s::/docs/lib/%s.htm"
+													 (md5 chm-path) chm-path
+													 name)))
+			  )
+	  (message "Help file could not be found, set ahk-chm-path variable."))))
+
+;; (add-to-list 'lsp-language-id-configuration '(ahk-mode . "ahk"))
+(lsp-register-client
+ (make-lsp-client
+  ;; keyword  reference cl-defstruct lsp--client
+  ;; :major-modes '(ahk-mode)
+  :new-connection
+  (lsp-stdio-connection
+   ;; https://github.com/thqby/vscode-autohotkey2-lsp/blob/main/README.zh-CN.md#emacs
+   (list "node"
+		 (expand-file-name "~/.emacs.d/.cache/lsp/vscode-autohotkey2-lsp/server/dist/server.js")
+		 "--stdio"
+		 ))
+  :activation-fn (lsp-activate-on "ahk")
+  :request-handlers (ht ("window/showMessageRequest" #'ahk-test))
+  :initialization-options
+  ;; https://github.com/thqby/vscode-autohotkey2-lsp/blob/main/README.zh-CN.md#sublime-text-4
+  '(
+	;; :locale "zh-cn"
+	:locale "en-us"
+	:AutoLibInclude "All"
+	)
+  :server-id 'ahk
+  ))
+(lsp-defun ahk-test (_workspace (&ShowMessageRequestParams :message :type :actions?))
+  (let* ((message (lsp--propertize message type))
+		 (choices (seq-map #'lsp:message-action-item-title actions?)))
+	(if choices
+		(let* ((ret (completing-read (concat message " ") (seq-into choices 'list) nil t)))
+		  (when (member "Switch to ahk v1" choices)
+			(setq-local ahk-v1 (string= "Switch to ahk v1" ret))
+			)
+		  (list :title ret)
+		  )
+	  (lsp-log message))
+	)
+  )
+
+
 
 
 ;;; Symbol completion
