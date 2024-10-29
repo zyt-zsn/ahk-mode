@@ -426,9 +426,7 @@ Finds the command in the internal AutoHotkey documentation."
   (when (boundp 'electric-indent-chars)
     (setq-local electric-indent-chars
                 (append electric-indent-chars ahk-electric-indent-chars)))
-
-  (add-to-list 'auto-mode-alist '("\\.ahk\\'" . ahk-mode)))
-
+  )
 ;; TODO change ^!# into C- M- S-
 
 (provide 'ahk-mode)
